@@ -6,6 +6,7 @@ import Badge from '../../components/UI/Badge';
 import Card from '../../components/UI/Card';
 import ProgressBar from '../../components/UI/ProgressBar';
 import toast from 'react-hot-toast';
+import { internshipAPI } from '../../services/internshipAPI';
 
 const InternshipDetail = () => {
   const { id } = useParams();
@@ -70,11 +71,8 @@ const InternshipDetail = () => {
 
   const handleEnroll = async () => {
     setEnrolling(true);
-    
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      await internshipAPI.enrollInternship(id);
       toast.success('Successfully enrolled! Welcome to the program!');
       navigate('/courses');
     } catch (error) {
