@@ -314,18 +314,18 @@ const MyCourses = () => {
 
                 {/* Actions */}
                 <div className="flex space-x-3">
-                  <Link 
-                    to={`/courses/${enrollment.id}/tasks`}
+                  <Link
+                    to={`/courses/${enrollment?.id}/tasks`}
                     className="flex-1"
                   >
                     <Button variant="outline" className="w-full">
-                      {enrollment.status === 'COMPLETED' ? 'Review' : 'Continue'}
+                      {enrollment?.status === 'COMPLETED' ? 'Review' : 'Continue'}
                     </Button>
                   </Link>
-                  
-                  {enrollment.progressPercentage === 100 && !enrollment.certificateIssued && enrollment.paymentStatus !== 'COMPLETED' && (
-                    <Link 
-                      to={`/payment/${enrollment.id}`}
+
+                  {(enrollment?.progressPercentage || 0) === 100 && !enrollment?.certificateIssued && enrollment?.paymentStatus !== 'COMPLETED' && (
+                    <Link
+                      to={`/payment/${enrollment?.id}`}
                       className="flex-1"
                     >
                       <Button className="w-full">
@@ -333,9 +333,9 @@ const MyCourses = () => {
                       </Button>
                     </Link>
                   )}
-                  
-                  {enrollment.certificateIssued && (
-                    <Link 
+
+                  {enrollment?.certificateIssued && (
+                    <Link
                       to="/certificates"
                       className="flex-1"
                     >
