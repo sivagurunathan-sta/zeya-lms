@@ -245,17 +245,17 @@ const MyCourses = () => {
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-gray-700">Progress</span>
                     <span className="text-sm text-gray-500">
-                      {enrollment.completedTasks}/{enrollment.totalTasks} tasks
+                      {(enrollment?.completedTasks || 0)}/{(enrollment?.totalTasks || 0)} tasks
                     </span>
                   </div>
-                  <ProgressBar 
-                    progress={enrollment.progressPercentage} 
-                    color={enrollment.progressPercentage === 100 ? 'green' : 'blue'}
+                  <ProgressBar
+                    progress={enrollment?.progressPercentage || 0}
+                    color={(enrollment?.progressPercentage || 0) === 100 ? 'green' : 'blue'}
                     showPercentage={false}
                   />
                   <div className="text-right mt-1">
                     <span className="text-sm font-medium text-gray-900">
-                      {Math.round(enrollment.progressPercentage)}%
+                      {Math.round(enrollment?.progressPercentage || 0)}%
                     </span>
                   </div>
                 </div>
