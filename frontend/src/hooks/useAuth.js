@@ -30,19 +30,9 @@ const useAuth = () => {
    * Checks for existing token and validates it
    */
   const initializeAuth = useCallback(async () => {
-    const storedToken = localStorage.getItem('token');
-    
-    if (storedToken) {
-      try {
-        // Validate token by fetching current user
-        await dispatch(checkAuth()).unwrap();
-      } catch (error) {
-        // Token is invalid, clear it
-        localStorage.removeItem('token');
-        console.error('Token validation failed:', error);
-      }
-    }
-  }, [dispatch]);
+    // Demo mode: no server validation required
+    return;
+  }, []);
 
   /**
    * Login user with credentials
@@ -104,15 +94,15 @@ const useAuth = () => {
   const logout = useCallback(() => {
     // Clear token from localStorage
     localStorage.removeItem('token');
-    
+
     // Clear any other auth-related data
     localStorage.removeItem('refreshToken');
-    
+
     // Dispatch logout action
     dispatch(logoutAction());
-    
-    // Optional: Clear any cached data or redirect
-    window.location.href = '/auth/login';
+
+    // Redirect to dashboard in demo mode
+    window.location.href = '/dashboard';
   }, [dispatch]);
 
   /**
@@ -181,15 +171,14 @@ const useAuth = () => {
    */
   const isTokenExpired = useCallback(() => {
     if (!token) return true;
-    
+    // Demo token never expires and is not a JWT
+    if (token === 'demo-token' || !token.includes('.')) return false;
     try {
-      // Decode JWT token to check expiration
       const tokenData = JSON.parse(atob(token.split('.')[1]));
       const currentTime = Date.now() / 1000;
       return tokenData.exp < currentTime;
     } catch (error) {
-      console.error('Error checking token expiration:', error);
-      return true;
+      return false;
     }
   }, [token]);
 
@@ -207,24 +196,9 @@ const useAuth = () => {
     }
   }, [dispatch, token, isTokenExpired, logout]);
 
-  // Initialize auth on mount
-  useEffect(() => {
-    initializeAuth();
-  }, [initializeAuth]);
+  // Demo mode: skip server-side auth initialization
 
-  // Set up token expiration check
-  useEffect(() => {
-    if (isAuthenticated && token) {
-      const checkTokenInterval = setInterval(() => {
-        if (isTokenExpired()) {
-          console.warn('Token expired, logging out...');
-          logout();
-        }
-      }, 60000); // Check every minute
-
-      return () => clearInterval(checkTokenInterval);
-    }
-  }, [isAuthenticated, token, isTokenExpired, logout]);
+  // Demo mode: no token expiration checks
 
   // Return the auth interface
   return {
