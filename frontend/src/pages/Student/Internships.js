@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import InternshipFilter from '../../components/Internship/InternshipFilter';
 import InternshipGrid from '../../components/Internship/InternshipGrid';
 import Pagination from '../../components/UI/Pagination';
+import { internshipAPI } from '../../services/internshipAPI';
 
 const Internships = () => {
   const [internships, setInternships] = useState([]);
@@ -104,13 +105,9 @@ const Internships = () => {
 
   const handleEnroll = async (internshipId) => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      toast.success('Successfully enrolled! Redirecting to course...');
-      
-      // Navigate to internship detail page
-      navigate(`/internships/${internshipId}`);
+      await internshipAPI.enrollInternship(internshipId);
+      toast.success('Successfully enrolled! Redirecting to My Courses...');
+      navigate('/courses');
     } catch (error) {
       toast.error('Failed to enroll. Please try again.');
     }
