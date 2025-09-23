@@ -119,10 +119,25 @@ function mockResponse(config) {
   return { success: true };
 }
 
+// In demo mode, short-circuit all requests using a custom adapter to avoid network calls
+if (isDemoMode) {
+  api.defaults.adapter = async (config) => {
+    const data = mockResponse(config);
+    return {
+      data,
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config,
+      request: {}
+    };
+  };
+}
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (isDemoMode && error?.message === 'Network Error') {
+    if (isDemoMode && (!error?.response)) {
       const mock = mockResponse(error.config || {});
       return Promise.resolve({ data: mock, status: 200, statusText: 'OK', headers: {}, config: error.config });
     }
