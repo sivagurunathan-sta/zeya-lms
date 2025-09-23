@@ -39,6 +39,15 @@ function mockResponse(config) {
   const path = (config?.url || '').split('?')[0];
   const method = (config?.method || 'get').toLowerCase();
 
+  // Demo in-memory store persisted to localStorage
+  const storeKey = 'demo_enrollments';
+  const load = () => {
+    try { return JSON.parse(localStorage.getItem(storeKey) || '[]'); } catch { return []; }
+  };
+  const save = (arr) => { try { localStorage.setItem(storeKey, JSON.stringify(arr)); } catch {} };
+  const makeId = () => Math.random().toString(36).slice(2, 10);
+  const idFromPath = () => path.split('/').filter(Boolean).pop();
+
   // Admin: Dashboard
   if (method === 'get' && path === '/admin/dashboard') {
     return {
@@ -77,18 +86,49 @@ function mockResponse(config) {
     return { submissions: [], pagination: { page: 1, total: 0, limit: 20 } };
   }
 
-  // Internships
+  // Internships & Enrollments (demo)
   if (method === 'get' && path === '/internships') {
     return [];
   }
   if (method === 'get' && path.startsWith('/internships/')) {
-    return { id: path.split('/').pop(), title: 'Demo Internship', description: 'Demo description', duration: 0, price: 0 };
+    return { id: idFromPath(), title: 'Demo Internship', description: 'Demo description', duration: 8, price: 0 };
   }
   if (method === 'get' && path === '/internships/my/enrollments') {
-    return [];
+    return load();
+  }
+  if (method === 'get' && path.startsWith('/internships/enrollment/')) {
+    const enrollId = idFromPath();
+    return load().find(e => e.id === enrollId) || null;
   }
   if (method === 'post' && path.endsWith('/enroll')) {
-    return { success: true };
+    const internshipId = idFromPath();
+    const now = new Date().toISOString();
+    const enrollments = load();
+    const enrollment = {
+      id: makeId(),
+      status: 'ACTIVE',
+      enrolledAt: now,
+      progressPercentage: 0,
+      completedTasks: 0,
+      totalTasks: 0,
+      paymentStatus: 'PENDING',
+      certificateIssued: false,
+      tasks: [],
+      internship: {
+        id: internshipId,
+        title: `Course ${internshipId}`,
+        duration: 8,
+        category: 'General'
+      },
+      student: {
+        firstName: 'Demo',
+        lastName: 'User',
+        email: 'demo@example.com'
+      }
+    };
+    enrollments.unshift(enrollment);
+    save(enrollments);
+    return { success: true, enrollment };
   }
 
   // Tasks
