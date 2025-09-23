@@ -42,7 +42,7 @@ const Sidebar = () => {
       {/* Desktop Sidebar */}
       <div className="hidden lg:flex lg:flex-shrink-0">
         <div className="flex flex-col w-64">
-          <div className="flex flex-col flex-1 min-h-0 bg-white border-r border-gray-200 pt-16">
+          <div className="flex flex-col flex-1 min-h-0 bg-white border-r border-gray-200">
             <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
               <nav className="mt-5 flex-1 px-2 space-y-1">
                 {menuItems.map((item) => (

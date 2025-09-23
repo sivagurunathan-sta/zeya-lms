@@ -1,7 +1,21 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import * as authAPI from '../../services/authAPI';
 
-// Async thunks
+// Demo auth initializer (replaces real auth)
+export const initDemoAuth = createAsyncThunk('auth/initDemo', async () => {
+  const demoUser = {
+    id: 'demo_user',
+    role: 'STUDENT',
+    firstName: 'Demo',
+    lastName: 'User',
+    email: 'demo@example.com'
+  };
+  const token = 'demo-token';
+  localStorage.setItem('token', token);
+  return { user: demoUser, token };
+});
+
+// Async thunks (kept for compatibility; no longer used in demo mode)
 export const loginUser = createAsyncThunk(
   'auth/login',
   async (credentials, { rejectWithValue }) => {
@@ -80,6 +94,29 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      // Init Demo Auth
+      .addCase(initDemoAuth.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(initDemoAuth.fulfilled, (state, action) => {
+        state.loading = false;
+        state.isAuthenticated = true;
+        state.user = action.payload.user;
+        state.token = action.payload.token;
+      })
+      .addCase(initDemoAuth.rejected, (state) => {
+        state.loading = false;
+        state.isAuthenticated = true; // still allow access
+        state.user = {
+          id: 'demo_user',
+          role: 'STUDENT',
+          firstName: 'Demo',
+          lastName: 'User',
+          email: 'demo@example.com'
+        };
+        state.token = 'demo-token';
+      })
       // Login
       .addCase(loginUser.pending, (state) => {
         state.loading = true;

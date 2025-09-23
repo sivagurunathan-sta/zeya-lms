@@ -1,17 +1,11 @@
 import React, { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { checkAuth } from './store/slices/authSlice';
+import { useDispatch } from 'react-redux';
 import { SocketProvider } from './contexts/SocketContext';
+import { initDemoAuth } from './store/slices/authSlice';
 
 // Layout Components
 import Layout from './components/Layout/Layout';
-import AuthLayout from './components/Layout/AuthLayout';
-
-// Auth Pages
-import Login from './pages/Auth/Login';
-import Register from './pages/Auth/Register';
-import ForgotPassword from './pages/Auth/ForgotPassword';
 
 // Student Pages
 import Dashboard from './pages/Student/Dashboard';
@@ -33,7 +27,6 @@ import PaymentHistory from './pages/Admin/PaymentHistory';
 
 // Shared Pages
 import NotFound from './pages/NotFound';
-import LoadingScreen from './components/UI/LoadingScreen';
 
 // Protected Route Component
 import ProtectedRoute from './components/Route/ProtectedRoute';
@@ -41,34 +34,16 @@ import AdminRoute from './components/Route/AdminRoute';
 
 function App() {
   const dispatch = useDispatch();
-  const { isAuthenticated, loading } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      dispatch(checkAuth());
-    }
+    dispatch(initDemoAuth());
   }, [dispatch]);
-
-  if (loading) {
-    return <LoadingScreen />;
-  }
 
   return (
     <SocketProvider>
       <div className="App">
         <Routes>
-          {/* Public Routes */}
-          <Route path="/auth" element={
-            isAuthenticated ? <Navigate to="/dashboard" replace /> : <AuthLayout />
-          }>
-            <Route path="login" element={<Login />} />
-            <Route path="register" element={<Register />} />
-            <Route path="forgot-password" element={<ForgotPassword />} />
-            <Route index element={<Navigate to="login" replace />} />
-          </Route>
-
-          {/* Protected Routes */}
+          {/* Main App Routes (no auth required) */}
           <Route path="/" element={
             <ProtectedRoute>
               <Layout />
