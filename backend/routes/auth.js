@@ -1,74 +1,50 @@
 const express = require('express');
-const { body, validationResult } = require('express-validator');
-const { auth } = require('../middleware/auth');
-const authController = require('../controllers/authController');
 
 const router = express.Router();
 
-// Validation middleware helper
-const validateRequest = (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      message: 'Validation error',
-      errors: errors.array()
-    });
-  }
-  next();
+const demoUser = {
+  id: 'demo_user',
+  role: 'STUDENT',
+  firstName: 'Demo',
+  lastName: 'User',
+  email: 'demo@example.com'
 };
 
-// Register
-router.post(
-  '/register',
-  [
-    body('email').isEmail().normalizeEmail(),
-    body('password').isLength({ min: 6 }),
-    body('firstName').notEmpty().trim(),
-    body('lastName').notEmpty().trim(),
-    body('phone').optional().isMobilePhone()
-  ],
-  validateRequest,
-  authController.register
-);
+// Demo login - accepts any credentials and returns demo user
+router.post('/login', (req, res) => {
+  return res.json({
+    success: true,
+    data: {
+      user: demoUser,
+      token: 'demo-token'
+    }
+  });
+});
 
-// Login
-router.post(
-  '/login',
-  [
-    body('email').isEmail().normalizeEmail(),
-    body('password').notEmpty()
-  ],
-  validateRequest,
-  authController.login
-);
+// Demo register - returns demo user
+router.post('/register', (req, res) => {
+  return res.status(201).json({
+    success: true,
+    data: {
+      user: demoUser,
+      token: 'demo-token'
+    }
+  });
+});
 
-// Get current user (protected route)
-router.get('/me', auth, authController.getCurrentUser);
+// Current user
+router.get('/me', (req, res) => {
+  return res.json({ success: true, data: demoUser });
+});
 
-// Update profile (protected route)
-router.put(
-  '/profile',
-  [
-    auth,
-    body('firstName').optional().notEmpty().trim(),
-    body('lastName').optional().notEmpty().trim(),
-    body('phone').optional().isMobilePhone()
-  ],
-  validateRequest,
-  authController.updateProfile
-);
+// Profile update
+router.put('/profile', (req, res) => {
+  return res.json({ success: true, data: { ...demoUser, ...req.body } });
+});
 
-// Change password (protected route)
-router.put(
-  '/password',
-  [
-    auth,
-    body('currentPassword').notEmpty(),
-    body('newPassword').isLength({ min: 6 })
-  ],
-  validateRequest,
-  authController.changePassword
-);
+// Change password (noop)
+router.put('/password', (req, res) => {
+  return res.json({ success: true, message: 'Password updated (demo)' });
+});
 
 module.exports = router;
