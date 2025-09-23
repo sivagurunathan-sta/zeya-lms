@@ -153,7 +153,7 @@ const MyCourses = () => {
               </div>
               <div className="ml-4">
                 <div className="text-2xl font-bold text-gray-900">
-                  {Math.round(enrollments.reduce((sum, e) => sum + e.progressPercentage, 0) / enrollments.length) || 0}%
+                  {enrollments.length > 0 ? Math.round(enrollments.reduce((sum, e) => sum + (e?.progressPercentage || 0), 0) / enrollments.length) : 0}%
                 </div>
                 <div className="text-sm text-gray-600">Avg Progress</div>
               </div>
