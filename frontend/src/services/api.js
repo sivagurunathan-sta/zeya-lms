@@ -131,11 +131,102 @@ function mockResponse(config) {
     return { success: true, enrollment };
   }
 
-  // Tasks
-  if (method === 'get' && path.startsWith('/tasks/')) {
-    return [];
+  // Tasks (demo)
+  if (method === 'get' && path.startsWith('/tasks/enrollment/')) {
+    const enrollId = idFromPath();
+    const tasksKey = (id) => `demo_tasks_${id}`;
+    const loadTasks = (id) => {
+      try { return JSON.parse(localStorage.getItem(tasksKey(id)) || 'null'); } catch { return null; }
+    };
+    const saveTasks = (id, arr) => { try { localStorage.setItem(tasksKey(id), JSON.stringify(arr)); } catch {} };
+    const ensureTasks = (id) => {
+      let arr = loadTasks(id);
+      if (!Array.isArray(arr) || arr.length === 0) {
+        arr = Array.from({ length: 6 }).map((_, idx) => ({
+          id: `${id}-t${idx + 1}`,
+          title: `Module ${idx + 1}`,
+          description: `Complete the learning module ${idx + 1} and submit your work`,
+          taskOrder: idx + 1,
+          estimatedHours: 2 + (idx % 3),
+          isUnlocked: idx === 0,
+          isCompleted: false,
+          canSubmit: idx === 0,
+          resources: idx === 0 ? { videos: [], documents: [] } : undefined,
+          submission: null,
+        }));
+        saveTasks(id, arr);
+      }
+      return arr;
+    };
+
+    const enrollments = load();
+    const found = enrollments.find((e) => e.id === enrollId) || {
+      id: enrollId,
+      status: 'ACTIVE',
+      enrolledAt: new Date().toISOString(),
+      progressPercentage: 0,
+      completedTasks: 0,
+      totalTasks: 0,
+      paymentStatus: 'PENDING',
+      certificateIssued: false,
+      tasks: [],
+      internship: { id: 'unknown', title: `Course ${enrollId}`, duration: 8, category: 'General' },
+      student: { firstName: 'Demo', lastName: 'User', email: 'demo@example.com' },
+      averageScore: 0,
+      daysRemaining: 30,
+    };
+
+    const tasks = ensureTasks(enrollId);
+    const completed = tasks.filter(t => t.isCompleted).length;
+    const updatedEnrollment = {
+      ...found,
+      completedTasks: completed,
+      totalTasks: tasks.length,
+      progressPercentage: Math.round((completed / tasks.length) * 100),
+    };
+
+    return { enrollment: updatedEnrollment, tasks };
   }
-  if (method === 'post' && path.includes('/tasks/')) {
+  if (method === 'post' && path.includes('/tasks/') && path.endsWith('/submit')) {
+    const parts = path.split('/');
+    const taskId = parts[2] === 'tasks' ? parts[3] : null;
+    // Infer enrollmentId from taskId prefix `${enrollId}-tX`
+    const enrollId = taskId && taskId.includes('-t') ? taskId.split('-t')[0] : null;
+    if (enrollId) {
+      const tasksKey = (id) => `demo_tasks_${id}`;
+      const loadTasks = (id) => { try { return JSON.parse(localStorage.getItem(tasksKey(id)) || '[]'); } catch { return []; } };
+      const saveTasks = (id, arr) => { try { localStorage.setItem(tasksKey(id), JSON.stringify(arr)); } catch {} };
+      const arr = loadTasks(enrollId);
+      const idx = arr.findIndex(t => t.id === taskId);
+      if (idx >= 0) {
+        arr[idx] = {
+          ...arr[idx],
+          isCompleted: true,
+          canSubmit: false,
+          submission: {
+            submittedAt: new Date().toISOString(),
+            status: 'PENDING',
+            feedback: null,
+            grade: null,
+          }
+        };
+        if (arr[idx + 1]) arr[idx + 1].isUnlocked = true;
+        saveTasks(enrollId, arr);
+      }
+      // Update enrollment progress in store
+      const store = load();
+      const i = store.findIndex(e => e.id === enrollId);
+      if (i >= 0) {
+        const completed = arr.filter(t => t.isCompleted).length;
+        store[i] = {
+          ...store[i],
+          completedTasks: completed,
+          totalTasks: arr.length,
+          progressPercentage: Math.round((completed / arr.length) * 100),
+        };
+        save(store);
+      }
+    }
     return { success: true };
   }
 
