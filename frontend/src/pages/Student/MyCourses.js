@@ -33,12 +33,20 @@ const MyCourses = () => {
     }
   );
 
-  const enrollments = enrollmentsData?.data || [];
+  // Normalize possible shapes: axios {data: []}, direct [], or nested {data:{data:[]}}
+  const enrollments = Array.isArray(enrollmentsData)
+    ? enrollmentsData
+    : Array.isArray(enrollmentsData?.data)
+      ? enrollmentsData.data
+      : Array.isArray(enrollmentsData?.data?.data)
+        ? enrollmentsData.data.data
+        : [];
 
-  const filteredEnrollments = enrollments.filter(enrollment => {
-    const matchesStatus = statusFilter === 'all' || enrollment.status === statusFilter;
-    const matchesSearch = enrollment.internship.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         enrollment.internship.category.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredEnrollments = enrollments.filter((enrollment) => {
+    const matchesStatus = statusFilter === 'all' || enrollment?.status === statusFilter;
+    const title = enrollment?.internship?.title?.toLowerCase?.() || '';
+    const category = enrollment?.internship?.category?.toLowerCase?.() || '';
+    const matchesSearch = title.includes(searchTerm.toLowerCase()) || category.includes(searchTerm.toLowerCase());
     return matchesStatus && matchesSearch;
   });
 
