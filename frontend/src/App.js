@@ -36,7 +36,7 @@ import AdminRoute from './components/Route/AdminRoute';
 function App() {
   const dispatch = useDispatch();
 
-  React.useEffect(() => {
+  useEffect(() => {
     dispatch(initDemoAuth());
   }, [dispatch]);
 
