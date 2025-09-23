@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from 'react-query';
 import toast from 'react-hot-toast';
 import InternshipFilter from '../../components/Internship/InternshipFilter';
 import InternshipGrid from '../../components/Internship/InternshipGrid';
@@ -13,6 +14,7 @@ const Internships = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // Mock data - replace with real API calls
   useEffect(() => {
@@ -105,7 +107,13 @@ const Internships = () => {
 
   const handleEnroll = async (internshipId) => {
     try {
-      await internshipAPI.enrollInternship(internshipId);
+      const res = await internshipAPI.enrollInternship(internshipId);
+      const newEnrollment = res?.data?.enrollment;
+      if (newEnrollment) {
+        const prev = queryClient.getQueryData('my-enrollments');
+        const prevList = prev?.data || [];
+        queryClient.setQueryData('my-enrollments', { data: [newEnrollment, ...prevList] });
+      }
       toast.success('Successfully enrolled! Redirecting to My Courses...');
       navigate('/courses');
     } catch (error) {
