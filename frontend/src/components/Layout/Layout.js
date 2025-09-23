@@ -7,9 +7,9 @@ const Layout = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <div className="flex">
+      <div className="flex pt-16">
         <Sidebar />
-        <main className="flex-1 lg:ml-64">
+        <main className="flex-1">
           <div className="p-6">
             <Outlet />
           </div>
