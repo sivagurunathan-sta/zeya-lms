@@ -224,19 +224,19 @@ const MyCourses = () => {
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <div className="flex items-center space-x-2 mb-2">
-                      <Badge variant="primary" size="sm">
-                        {enrollment.internship.category}
-                      </Badge>
-                      <Badge variant={getStatusColor(enrollment.status)} size="sm">
-                        {enrollment.status}
-                      </Badge>
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                      {enrollment.internship.title}
-                    </h3>
-                    <p className="text-gray-600 text-sm">
-                      {enrollment.internship.duration} weeks • Enrolled {formatters.relativeTime(enrollment.enrolledAt)}
-                    </p>
+                    <Badge variant="primary" size="sm">
+                      {enrollment?.internship?.category || 'General'}
+                    </Badge>
+                    <Badge variant={getStatusColor(enrollment?.status)} size="sm">
+                      {enrollment?.status || 'ACTIVE'}
+                    </Badge>
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                    {enrollment?.internship?.title || 'Course'}
+                  </h3>
+                  <p className="text-gray-600 text-sm">
+                    {(enrollment?.internship?.duration || 0)} weeks • Enrolled {formatters.relativeTime(enrollment?.enrolledAt || new Date())}
+                  </p>
                   </div>
                 </div>
 
