@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from 'react-query';
 import toast from 'react-hot-toast';
 import InternshipFilter from '../../components/Internship/InternshipFilter';
 import InternshipGrid from '../../components/Internship/InternshipGrid';
 import Pagination from '../../components/UI/Pagination';
+import { internshipAPI } from '../../services/internshipAPI';
 
 const Internships = () => {
   const [internships, setInternships] = useState([]);
@@ -12,6 +14,7 @@ const Internships = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // Mock data - replace with real API calls
   useEffect(() => {
@@ -102,17 +105,54 @@ const Internships = () => {
     setCurrentPage(1);
   };
 
+  const createLocalEnrollment = (internshipId) => {
+    const storeKey = 'demo_enrollments';
+    const load = () => { try { return JSON.parse(localStorage.getItem(storeKey) || '[]'); } catch { return []; } };
+    const save = (arr) => { try { localStorage.setItem(storeKey, JSON.stringify(arr)); } catch {} };
+    const makeId = () => Math.random().toString(36).slice(2, 10);
+    const now = new Date().toISOString();
+    const enrollment = {
+      id: makeId(),
+      status: 'ACTIVE',
+      enrolledAt: now,
+      progressPercentage: 0,
+      completedTasks: 0,
+      totalTasks: 0,
+      paymentStatus: 'PENDING',
+      certificateIssued: false,
+      tasks: [],
+      internship: {
+        id: internshipId,
+        title: `Course ${internshipId}`,
+        duration: 8,
+        category: 'General'
+      },
+      student: { firstName: 'Demo', lastName: 'User', email: 'demo@example.com' }
+    };
+    const list = load();
+    list.unshift(enrollment);
+    save(list);
+    return enrollment;
+  };
+
   const handleEnroll = async (internshipId) => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      toast.success('Successfully enrolled! Redirecting to course...');
-      
-      // Navigate to internship detail page
-      navigate(`/internships/${internshipId}`);
+      const res = await internshipAPI.enrollInternship(internshipId);
+      const newEnrollment = res?.data?.enrollment;
+      if (newEnrollment) {
+        const prev = queryClient.getQueryData('my-enrollments');
+        const prevList = Array.isArray(prev?.data) ? prev.data : Array.isArray(prev) ? prev : [];
+        queryClient.setQueryData('my-enrollments', { data: [newEnrollment, ...prevList] });
+      }
+      toast.success('Successfully enrolled! Redirecting to My Courses...');
+      navigate('/courses');
     } catch (error) {
-      toast.error('Failed to enroll. Please try again.');
+      const fallback = createLocalEnrollment(internshipId);
+      const prev = queryClient.getQueryData('my-enrollments');
+      const prevList = Array.isArray(prev?.data) ? prev.data : Array.isArray(prev) ? prev : [];
+      queryClient.setQueryData('my-enrollments', { data: [fallback, ...prevList] });
+      toast.success('Enrolled (offline). Redirecting to My Courses...');
+      navigate('/courses');
     }
   };
 

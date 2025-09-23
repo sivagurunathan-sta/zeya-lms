@@ -33,12 +33,20 @@ const MyCourses = () => {
     }
   );
 
-  const enrollments = enrollmentsData?.data || [];
+  // Normalize possible shapes: axios {data: []}, direct [], or nested {data:{data:[]}}
+  const enrollments = Array.isArray(enrollmentsData)
+    ? enrollmentsData
+    : Array.isArray(enrollmentsData?.data)
+      ? enrollmentsData.data
+      : Array.isArray(enrollmentsData?.data?.data)
+        ? enrollmentsData.data.data
+        : [];
 
-  const filteredEnrollments = enrollments.filter(enrollment => {
-    const matchesStatus = statusFilter === 'all' || enrollment.status === statusFilter;
-    const matchesSearch = enrollment.internship.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         enrollment.internship.category.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredEnrollments = enrollments.filter((enrollment) => {
+    const matchesStatus = statusFilter === 'all' || enrollment?.status === statusFilter;
+    const title = enrollment?.internship?.title?.toLowerCase?.() || '';
+    const category = enrollment?.internship?.category?.toLowerCase?.() || '';
+    const matchesSearch = title.includes(searchTerm.toLowerCase()) || category.includes(searchTerm.toLowerCase());
     return matchesStatus && matchesSearch;
   });
 
@@ -145,7 +153,7 @@ const MyCourses = () => {
               </div>
               <div className="ml-4">
                 <div className="text-2xl font-bold text-gray-900">
-                  {Math.round(enrollments.reduce((sum, e) => sum + e.progressPercentage, 0) / enrollments.length) || 0}%
+                  {enrollments.length > 0 ? Math.round(enrollments.reduce((sum, e) => sum + (e?.progressPercentage || 0), 0) / enrollments.length) : 0}%
                 </div>
                 <div className="text-sm text-gray-600">Avg Progress</div>
               </div>
@@ -216,19 +224,19 @@ const MyCourses = () => {
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <div className="flex items-center space-x-2 mb-2">
-                      <Badge variant="primary" size="sm">
-                        {enrollment.internship.category}
-                      </Badge>
-                      <Badge variant={getStatusColor(enrollment.status)} size="sm">
-                        {enrollment.status}
-                      </Badge>
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                      {enrollment.internship.title}
-                    </h3>
-                    <p className="text-gray-600 text-sm">
-                      {enrollment.internship.duration} weeks • Enrolled {formatters.relativeTime(enrollment.enrolledAt)}
-                    </p>
+                    <Badge variant="primary" size="sm">
+                      {enrollment?.internship?.category || 'General'}
+                    </Badge>
+                    <Badge variant={getStatusColor(enrollment?.status)} size="sm">
+                      {enrollment?.status || 'ACTIVE'}
+                    </Badge>
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                    {enrollment?.internship?.title || 'Course'}
+                  </h3>
+                  <p className="text-gray-600 text-sm">
+                    {(enrollment?.internship?.duration || 0)} weeks • Enrolled {formatters.relativeTime(enrollment?.enrolledAt || new Date())}
+                  </p>
                   </div>
                 </div>
 
@@ -237,17 +245,17 @@ const MyCourses = () => {
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-gray-700">Progress</span>
                     <span className="text-sm text-gray-500">
-                      {enrollment.completedTasks}/{enrollment.totalTasks} tasks
+                      {(enrollment?.completedTasks || 0)}/{(enrollment?.totalTasks || 0)} tasks
                     </span>
                   </div>
-                  <ProgressBar 
-                    progress={enrollment.progressPercentage} 
-                    color={enrollment.progressPercentage === 100 ? 'green' : 'blue'}
+                  <ProgressBar
+                    progress={enrollment?.progressPercentage || 0}
+                    color={(enrollment?.progressPercentage || 0) === 100 ? 'green' : 'blue'}
                     showPercentage={false}
                   />
                   <div className="text-right mt-1">
                     <span className="text-sm font-medium text-gray-900">
-                      {Math.round(enrollment.progressPercentage)}%
+                      {Math.round(enrollment?.progressPercentage || 0)}%
                     </span>
                   </div>
                 </div>
@@ -283,14 +291,14 @@ const MyCourses = () => {
                 )}
 
                 {/* Certificate Status */}
-                {enrollment.progressPercentage === 100 && (
+                {(enrollment?.progressPercentage || 0) === 100 && (
                   <div className="mb-4">
-                    {enrollment.certificateIssued ? (
+                    {enrollment?.certificateIssued ? (
                       <div className="flex items-center space-x-2 text-green-600 text-sm">
                         <Award className="w-4 h-4" />
                         <span>Certificate issued</span>
                       </div>
-                    ) : enrollment.paymentStatus === 'COMPLETED' ? (
+                    ) : enrollment?.paymentStatus === 'COMPLETED' ? (
                       <div className="flex items-center space-x-2 text-blue-600 text-sm">
                         <Clock className="w-4 h-4" />
                         <span>Certificate being processed</span>
@@ -306,18 +314,18 @@ const MyCourses = () => {
 
                 {/* Actions */}
                 <div className="flex space-x-3">
-                  <Link 
-                    to={`/courses/${enrollment.id}/tasks`}
+                  <Link
+                    to={`/courses/${enrollment?.id}/tasks`}
                     className="flex-1"
                   >
                     <Button variant="outline" className="w-full">
-                      {enrollment.status === 'COMPLETED' ? 'Review' : 'Continue'}
+                      {enrollment?.status === 'COMPLETED' ? 'Review' : 'Continue'}
                     </Button>
                   </Link>
-                  
-                  {enrollment.progressPercentage === 100 && !enrollment.certificateIssued && enrollment.paymentStatus !== 'COMPLETED' && (
-                    <Link 
-                      to={`/payment/${enrollment.id}`}
+
+                  {(enrollment?.progressPercentage || 0) === 100 && !enrollment?.certificateIssued && enrollment?.paymentStatus !== 'COMPLETED' && (
+                    <Link
+                      to={`/payment/${enrollment?.id}`}
                       className="flex-1"
                     >
                       <Button className="w-full">
@@ -325,9 +333,9 @@ const MyCourses = () => {
                       </Button>
                     </Link>
                   )}
-                  
-                  {enrollment.certificateIssued && (
-                    <Link 
+
+                  {enrollment?.certificateIssued && (
+                    <Link
                       to="/certificates"
                       className="flex-1"
                     >
