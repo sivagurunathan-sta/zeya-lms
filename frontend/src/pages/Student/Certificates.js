@@ -6,10 +6,7 @@ import {
   Download, 
   Share2, 
   Eye,
-  Calendar,
-  ExternalLink,
   Search,
-  Filter
 } from 'lucide-react';
 import { certificateAPI } from '../../services/certificateAPI';
 import CertificateCard from '../../components/Certificate/CertificateCard';

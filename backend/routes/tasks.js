@@ -1,30 +1,79 @@
 const express = require('express');
+const { body, validationResult } = require('express-validator');
 const { auth, adminAuth } = require('../middleware/auth');
-const { validate } = require('../middleware/validation');
 const {
   getTasksForEnrollment,
   submitTask,
   reviewSubmission,
-  getPendingSubmissions
+  getPendingSubmissions,
+  createTask,
+  updateTask,
+  deleteTask
 } = require('../controllers/taskController');
-const {
-  taskSubmissionSchema,
-  taskReviewSchema
-} = require('../middleware/validation');
 
 const router = express.Router();
+
+// Validation middleware
+const validateRequest = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Validation error',
+      errors: errors.array()
+    });
+  }
+  next();
+};
 
 // Get tasks for specific enrollment (Student)
 router.get('/enrollment/:enrollmentId', auth, getTasksForEnrollment);
 
 // Submit task (Student)
-router.post('/:taskId/submit', [auth, validate(taskSubmissionSchema)], submitTask);
+router.post('/:taskId/submit', [
+  auth,
+  body('enrollmentId').isMongoId(),
+  body('submissionText').optional().isLength({ max: 5000 }),
+  body('fileUrls').optional().isArray()
+], validateRequest, submitTask);
 
 // Review task submission (Admin only)
-router.put('/submission/:submissionId/review', [auth, adminAuth, validate(taskReviewSchema)], reviewSubmission);
+router.put('/submission/:submissionId/review', [
+  auth,
+  adminAuth,
+  body('status').isIn(['APPROVED', 'REJECTED', 'NEEDS_REVISION']),
+  body('feedback').optional().isLength({ max: 1000 }),
+  body('grade').optional().isFloat({ min: 0, max: 10 })
+], validateRequest, reviewSubmission);
 
 // Get pending submissions for review (Admin only)
 router.get('/admin/pending', [auth, adminAuth], getPendingSubmissions);
+
+// Create task (Admin only)
+router.post('/', [
+  auth,
+  adminAuth,
+  body('internshipId').isMongoId(),
+  body('title').isLength({ min: 3, max: 200 }),
+  body('description').isLength({ min: 10, max: 2000 }),
+  body('taskOrder').isInt({ min: 1 }),
+  body('estimatedHours').optional().isInt({ min: 1, max: 100 }),
+  body('isMandatory').optional().isBoolean()
+], validateRequest, createTask);
+
+// Update task (Admin only)
+router.put('/:id', [
+  auth,
+  adminAuth,
+  body('title').optional().isLength({ min: 3, max: 200 }),
+  body('description').optional().isLength({ min: 10, max: 2000 }),
+  body('taskOrder').optional().isInt({ min: 1 }),
+  body('estimatedHours').optional().isInt({ min: 1, max: 100 }),
+  body('isMandatory').optional().isBoolean()
+], validateRequest, updateTask);
+
+// Delete task (Admin only)
+router.delete('/:id', [auth, adminAuth], deleteTask);
 
 // Get all submissions for a specific task (Admin only)
 router.get('/:taskId/submissions', [auth, adminAuth], (req, res, next) => {
@@ -68,7 +117,7 @@ router.get('/admin/progress/:internshipId', [auth, adminAuth], async (req, res, 
             $size: {
               $filter: {
                 input: '$submissions',
-                cond: { $eq: ['$$this.status', 'APPROVED'] }
+                cond: { $eq: ['$this.status', 'APPROVED'] }
               }
             }
           },
@@ -76,7 +125,7 @@ router.get('/admin/progress/:internshipId', [auth, adminAuth], async (req, res, 
             $size: {
               $filter: {
                 input: '$submissions',
-                cond: { $eq: ['$$this.status', 'PENDING'] }
+                cond: { $eq: ['$this.status', 'PENDING'] }
               }
             }
           },
@@ -84,7 +133,7 @@ router.get('/admin/progress/:internshipId', [auth, adminAuth], async (req, res, 
             $size: {
               $filter: {
                 input: '$submissions',
-                cond: { $eq: ['$$this.status', 'REJECTED'] }
+                cond: { $eq: ['$this.status', 'REJECTED'] }
               }
             }
           }
@@ -137,7 +186,7 @@ router.get('/admin/analytics', [auth, adminAuth], async (req, res, next) => {
             $size: {
               $filter: {
                 input: '$submissions',
-                cond: { $eq: ['$$this.status', 'APPROVED'] }
+                cond: { $eq: ['$this.status', 'APPROVED'] }
               }
             }
           }

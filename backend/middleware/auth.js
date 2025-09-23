@@ -13,6 +13,75 @@ const auth = async (req, res, next) => {
       });
     }
 
+    try {
+      const decoded = jwtUtil.verify(token);
+      const db = getDB();
+
+      const user = await db.collection('users').findOne(
+        { _id: new ObjectId(decoded.userId) },
+        {
+          projection: {
+            email: 1,
+            firstName: 1,
+            lastName: 1,
+            role: 1,
+            isActive: 1
+          }
+        }
+      );
+
+      if (!user || user.isActive === false) {
+        return res.status(401).json({
+          success: false,
+          message: 'Token is not valid'
+        });
+      }
+
+      req.user = {
+        id: user._id.toString(),
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        isActive: user.isActive
+      };
+      next();
+    } catch (jwtError) {
+      console.error('JWT verification error:', jwtError.message);
+      return res.status(401).json({
+        success: false,
+        message: 'Token is not valid'
+      });
+    }
+  } catch (error) {
+    console.error('Auth middleware error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error in authentication'
+    });
+  }
+};
+
+const adminAuth = (req, res, next) => {
+  if (req.user && req.user.role === 'ADMIN') {
+    next();
+  } else {
+    res.status(403).json({
+      success: false,
+      message: 'Access denied. Admin only.'
+    });
+  }
+};
+
+const optionalAuth = async (req, res, next) => {
+  const token = req.header('Authorization')?.replace('Bearer ', '');
+  
+  if (!token) {
+    req.user = null;
+    return next();
+  }
+
+  try {
     const decoded = jwtUtil.verify(token);
     const db = getDB();
 
@@ -29,40 +98,23 @@ const auth = async (req, res, next) => {
       }
     );
 
-    if (!user || user.isActive === false) {
-      return res.status(401).json({
-        success: false,
-        message: 'Token is not valid'
-      });
+    if (user && user.isActive) {
+      req.user = {
+        id: user._id.toString(),
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        isActive: user.isActive
+      };
+    } else {
+      req.user = null;
     }
-
-    req.user = {
-      id: user._id.toString(),
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role,
-      isActive: user.isActive
-    };
-    next();
   } catch (error) {
-    console.error('Auth middleware error:', error);
-    res.status(401).json({
-      success: false,
-      message: 'Token is not valid'
-    });
+    req.user = null;
   }
+  
+  next();
 };
 
-const adminAuth = (req, res, next) => {
-  if (req.user && req.user.role === 'ADMIN') {
-    next();
-  } else {
-    res.status(403).json({
-      success: false,
-      message: 'Access denied. Admin only.'
-    });
-  }
-};
-
-module.exports = { auth, adminAuth };
+module.exports = { auth, adminAuth, optionalAuth };

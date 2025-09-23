@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useQuery } from 'react-query';
 import { 
   Search, 
-  Filter, 
   Download, 
   RefreshCw,
   CreditCard,

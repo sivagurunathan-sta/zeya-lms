@@ -1,6 +1,5 @@
 import React from 'react';
 import { CheckCircle, Download, ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import Confetti from 'react-confetti';
 import Button from '../UI/Button';
 import Card from '../UI/Card';

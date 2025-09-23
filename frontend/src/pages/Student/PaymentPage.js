@@ -1,16 +1,12 @@
 // src/pages/Student/PaymentPage.js
-import React, { useState, useEffect } from 'react';
+import React, { useState} from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from 'react-query';
 import { 
   ArrowLeft, 
-  CreditCard, 
   Shield, 
   CheckCircle,
   Award,
-  Smartphone,
-  Building,
-  Wallet
 } from 'lucide-react';
 import { paymentAPI } from '../../services/paymentAPI';
 import { internshipAPI } from '../../services/internshipAPI';

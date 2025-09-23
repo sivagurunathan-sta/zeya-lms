@@ -88,7 +88,7 @@ const getTasksForEnrollment = async (req, res, next) => {
         id: task._id.toString(),
         isUnlocked,
         isCompleted,
-        submission: submission || null,
+        submission: submission ? { ...submission, id: submission._id.toString() } : null,
         canSubmit: isUnlocked && !isCompleted && paymentCompleted
       };
     });
@@ -180,20 +180,20 @@ const submitTask = async (req, res, next) => {
       }
     }
 
-    // Check if already submitted
+    // Check if already submitted and pending/approved
     const existingSubmission = await db.collection('taskSubmissions').findOne({
       enrollmentId: new ObjectId(enrollmentId),
       taskId: new ObjectId(taskId)
     });
 
-    if (existingSubmission) {
+    if (existingSubmission && existingSubmission.status !== 'REJECTED') {
       return res.status(400).json({
         success: false,
-        message: 'Task already submitted'
+        message: existingSubmission.status === 'APPROVED' ? 'Task already completed' : 'Task already submitted and pending review'
       });
     }
 
-    // Create submission
+    // Create or update submission
     const submissionDoc = {
       enrollmentId: new ObjectId(enrollmentId),
       taskId: new ObjectId(taskId),
@@ -207,14 +207,26 @@ const submitTask = async (req, res, next) => {
       reviewedById: null
     };
 
-    const result = await db.collection('taskSubmissions').insertOne(submissionDoc);
+    let result;
+    if (existingSubmission) {
+      // Update existing rejected submission
+      result = await db.collection('taskSubmissions').updateOne(
+        { _id: existingSubmission._id },
+        { $set: submissionDoc }
+      );
+      submissionDoc._id = existingSubmission._id;
+    } else {
+      // Create new submission
+      result = await db.collection('taskSubmissions').insertOne(submissionDoc);
+      submissionDoc._id = result.insertedId;
+    }
 
     // Send notification to admin
     const io = req.app.get('io');
     if (io) {
       const user = await db.collection('users').findOne({ _id: new ObjectId(req.user.id) });
       io.emit('new-submission', {
-        submissionId: result.insertedId.toString(),
+        submissionId: submissionDoc._id.toString(),
         studentName: `${user.firstName} ${user.lastName}`,
         taskTitle: task.title,
         internshipTitle: enrollmentData.internship.title
@@ -223,10 +235,10 @@ const submitTask = async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      message: 'Task submitted successfully',
+      message: existingSubmission ? 'Task resubmitted successfully' : 'Task submitted successfully',
       data: {
         ...submissionDoc,
-        id: result.insertedId.toString()
+        id: submissionDoc._id.toString()
       }
     });
   } catch (error) {
@@ -280,14 +292,14 @@ const reviewSubmission = async (req, res, next) => {
       });
 
       const totalTasks = internship.totalTasks;
-      const progressPercentage = (approvedSubmissions / totalTasks) * 100;
+      const progressPercentage = Math.round((approvedSubmissions / totalTasks) * 100);
 
       const enrollmentUpdate = {
         progressPercentage,
         updatedAt: new Date()
       };
 
-      if (progressPercentage === 100) {
+      if (progressPercentage >= 75) { // 75% completion required
         enrollmentUpdate.status = 'COMPLETED';
         enrollmentUpdate.completedAt = new Date();
       }
@@ -381,12 +393,17 @@ Student LMS Team`
 // Get pending submissions (Admin only)
 const getPendingSubmissions = async (req, res, next) => {
   try {
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, taskId } = req.query;
     const db = getDB();
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
+    const matchFilter = { status: 'PENDING' };
+    if (taskId) {
+      matchFilter.taskId = new ObjectId(taskId);
+    }
+
     const submissions = await db.collection('taskSubmissions').aggregate([
-      { $match: { status: 'PENDING' } },
+      { $match: matchFilter },
       {
         $lookup: {
           from: 'tasks',
@@ -429,14 +446,12 @@ const getPendingSubmissions = async (req, res, next) => {
         }
       },
       { $unwind: '$internship' },
-      { $sort: { submittedAt: 1 } },
+      { $sort: { submittedAt: 1 } }, // Oldest first for review queue
       { $skip: skip },
       { $limit: parseInt(limit) }
     ]).toArray();
 
-    const total = await db.collection('taskSubmissions').countDocuments({
-      status: 'PENDING'
-    });
+    const total = await db.collection('taskSubmissions').countDocuments(matchFilter);
 
     res.json({
       success: true,
@@ -458,9 +473,164 @@ const getPendingSubmissions = async (req, res, next) => {
   }
 };
 
+// Create task (Admin only)
+const createTask = async (req, res, next) => {
+  try {
+    const {
+      internshipId,
+      title,
+      description,
+      taskOrder,
+      estimatedHours,
+      resources,
+      guidelines,
+      isMandatory
+    } = req.body;
+
+    const db = getDB();
+
+    // Verify internship exists
+    const internship = await db.collection('internships').findOne({
+      _id: new ObjectId(internshipId)
+    });
+
+    if (!internship) {
+      return res.status(404).json({
+        success: false,
+        message: 'Internship not found'
+      });
+    }
+
+    // Check if task order already exists
+    const existingTask = await db.collection('tasks').findOne({
+      internshipId: new ObjectId(internshipId),
+      taskOrder
+    });
+
+    if (existingTask) {
+      return res.status(400).json({
+        success: false,
+        message: `Task with order ${taskOrder} already exists`
+      });
+    }
+
+    const taskDoc = {
+      internshipId: new ObjectId(internshipId),
+      title,
+      description,
+      taskOrder,
+      estimatedHours: estimatedHours || 8,
+      resources: resources || {},
+      guidelines: guidelines || '',
+      isMandatory: isMandatory !== false,
+      createdById: new ObjectId(req.user.id),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    const result = await db.collection('tasks').insertOne(taskDoc);
+
+    res.status(201).json({
+      success: true,
+      message: 'Task created successfully',
+      data: {
+        ...taskDoc,
+        id: result.insertedId.toString()
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Update task (Admin only)
+const updateTask = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const updateData = {
+      ...req.body,
+      updatedAt: new Date()
+    };
+
+    // Remove undefined fields
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === undefined) {
+        delete updateData[key];
+      }
+    });
+
+    const db = getDB();
+    
+    const result = await db.collection('tasks').findOneAndUpdate(
+      { _id: new ObjectId(id) },
+      { $set: updateData },
+      { returnDocument: 'after' }
+    );
+
+    if (!result.value) {
+      return res.status(404).json({
+        success: false,
+        message: 'Task not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Task updated successfully',
+      data: {
+        ...result.value,
+        id: result.value._id.toString()
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Delete task (Admin only)
+const deleteTask = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const db = getDB();
+
+    // Check if there are submissions for this task
+    const submissionCount = await db.collection('taskSubmissions').countDocuments({
+      taskId: new ObjectId(id)
+    });
+
+    if (submissionCount > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete task with existing submissions'
+      });
+    }
+
+    const result = await db.collection('tasks').deleteOne({
+      _id: new ObjectId(id)
+    });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Task not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Task deleted successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getTasksForEnrollment,
   submitTask,
   reviewSubmission,
-  getPendingSubmissions
+  getPendingSubmissions,
+  createTask,
+  updateTask,
+  deleteTask
 };

@@ -1,17 +1,13 @@
 // src/pages/Student/TaskView.js
-import React, { useState, useEffect } from 'react';
+import React, { useState} from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { 
   ArrowLeft, 
-  Clock, 
-  CheckCircle, 
   Play, 
   FileText,
   ExternalLink,
-  Upload,
   Send,
-  Calendar,
   Award
 } from 'lucide-react';
 import { taskAPI } from '../../services/taskAPI';

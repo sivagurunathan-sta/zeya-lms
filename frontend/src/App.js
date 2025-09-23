@@ -41,7 +41,7 @@ import AdminRoute from './components/Route/AdminRoute';
 
 function App() {
   const dispatch = useDispatch();
-  const { isAuthenticated, loading, user } = useSelector((state) => state.auth);
+  const { isAuthenticated, loading } = useSelector((state) => state.auth);
 
   useEffect(() => {
     const token = localStorage.getItem('token');

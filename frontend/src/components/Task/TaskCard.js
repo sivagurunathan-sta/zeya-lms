@@ -5,7 +5,7 @@ import Badge from '../UI/Badge';
 
 const TaskCard = ({ task, onStart, onViewSubmission }) => {
   const {
-    id,
+    // id,  // REMOVED - was unused
     title,
     description,
     taskOrder,

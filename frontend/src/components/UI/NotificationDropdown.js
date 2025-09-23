@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, X } from 'lucide-react';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import Badge from './Badge';
-import Dropdown, { DropdownItem } from './Dropdown';
+import Dropdown from './Dropdown';
 import { formatDistanceToNow } from 'date-fns';
 
 const NotificationDropdown = () => {

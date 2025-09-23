@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { 
   Search, 
-  Filter, 
   MoreHorizontal, 
   Edit, 
   Ban, 

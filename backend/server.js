@@ -58,9 +58,21 @@ app.set('io', io);
 // Env warnings in development
 warnIfMissingEnv();
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ 
+    success: true, 
+    message: 'Server is running', 
+    timestamp: new Date().toISOString() 
+  });
+});
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static('uploads'));
+
 // Routes
 app.use('/api/auth', require('./routes/auth'));
-// app.use('/api/admin', require('./routes/admin'));
+app.use('/api/admin', require('./routes/admin'));
 app.use('/api/internships', require('./routes/internships'));
 app.use('/api/tasks', require('./routes/tasks'));
 app.use('/api/payments', require('./routes/payments'));
@@ -85,9 +97,21 @@ const PORT = process.env.PORT || 5000;
 connectDB().then(() => {
   server.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📊 Environment: ${process.env.NODE_ENV}`);
+    console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🔗 API Base URL: http://localhost:${PORT}/api`);
   });
 }).catch((err) => {
   console.error('Failed to connect to database:', err);
   process.exit(1);
 });
+
+// Graceful shutdown
+process.on('SIGINT', () => {
+  console.log('\n📝 Shutting down gracefully...');
+  server.close(() => {
+    console.log('✅ HTTP server closed.');
+    process.exit(0);
+  });
+});
+
+module.exports = app;

@@ -5,9 +5,7 @@ import {
   Users, 
   DollarSign, 
   Award,
-  Calendar,
-  Download,
-  Filter
+  Download
 } from 'lucide-react';
 import { adminAPI } from '../../services/adminAPI';
 import LoadingSpinner from '../../components/UI/LoadingSpinner';

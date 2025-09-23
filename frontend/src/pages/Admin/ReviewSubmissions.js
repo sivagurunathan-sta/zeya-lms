@@ -2,13 +2,8 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { 
   Search, 
-  Filter, 
   ExternalLink, 
-  CheckCircle, 
-  XCircle,
-  Clock,
   Star,
-  FileText
 } from 'lucide-react';
 import { adminAPI } from '../../services/adminAPI';
 import LoadingSpinner from '../../components/UI/LoadingSpinner';

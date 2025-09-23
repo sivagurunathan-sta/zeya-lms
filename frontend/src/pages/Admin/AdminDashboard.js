@@ -7,13 +7,12 @@ import {
   DollarSign, 
   Award,
   TrendingUp,
-  TrendingDown,
   Calendar,
   Activity,
   CheckCircle,
   Clock,
   AlertCircle
-} from 'lucide-react';
+} from 'lucide-react';;
 import { adminAPI } from '../../services/adminAPI';
 import AnalyticsDashboard from '../../components/Analytics/Dashboard';
 import StatsCard from '../../components/Analytics/StatsCard';

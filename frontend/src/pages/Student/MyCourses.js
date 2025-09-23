@@ -1,5 +1,5 @@
 // src/pages/Student/MyCourses.js
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from 'react-query';
 import { 
@@ -8,7 +8,6 @@ import {
   Award, 
   Play, 
   CheckCircle,
-  Filter,
   Search,
   Calendar,
   TrendingUp

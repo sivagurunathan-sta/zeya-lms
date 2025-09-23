@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Clock, Users, Star, Award, CheckCircle, ArrowLeft } from 'lucide-react';
+import { Clock, Users, Star, CheckCircle, ArrowLeft } from 'lucide-react';
 import Button from '../../components/UI/Button';
 import Badge from '../../components/UI/Badge';
 import Card from '../../components/UI/Card';

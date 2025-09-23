@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, Send, X } from 'lucide-react';
+import { Send } from 'lucide-react';
 import Button from '../UI/Button';
 import Textarea from '../Form/Textarea';
 import FileUpload from '../Form/FileUpload';
