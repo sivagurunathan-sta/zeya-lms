@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useQueryClient } from 'react-query';
 import { Clock, Users, Star, CheckCircle, ArrowLeft } from 'lucide-react';
 import Button from '../../components/UI/Button';
 import Badge from '../../components/UI/Badge';
@@ -14,6 +15,7 @@ const InternshipDetail = () => {
   const [internship, setInternship] = useState(null);
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState(false);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const fetchInternship = async () => {
@@ -72,7 +74,13 @@ const InternshipDetail = () => {
   const handleEnroll = async () => {
     setEnrolling(true);
     try {
-      await internshipAPI.enrollInternship(id);
+      const res = await internshipAPI.enrollInternship(id);
+      const newEnrollment = res?.data?.enrollment;
+      if (newEnrollment) {
+        const prev = queryClient.getQueryData('my-enrollments');
+        const prevList = prev?.data || [];
+        queryClient.setQueryData('my-enrollments', { data: [newEnrollment, ...prevList] });
+      }
       toast.success('Successfully enrolled! Welcome to the program!');
       navigate('/courses');
     } catch (error) {
