@@ -291,14 +291,14 @@ const MyCourses = () => {
                 )}
 
                 {/* Certificate Status */}
-                {enrollment.progressPercentage === 100 && (
+                {(enrollment?.progressPercentage || 0) === 100 && (
                   <div className="mb-4">
-                    {enrollment.certificateIssued ? (
+                    {enrollment?.certificateIssued ? (
                       <div className="flex items-center space-x-2 text-green-600 text-sm">
                         <Award className="w-4 h-4" />
                         <span>Certificate issued</span>
                       </div>
-                    ) : enrollment.paymentStatus === 'COMPLETED' ? (
+                    ) : enrollment?.paymentStatus === 'COMPLETED' ? (
                       <div className="flex items-center space-x-2 text-blue-600 text-sm">
                         <Clock className="w-4 h-4" />
                         <span>Certificate being processed</span>
