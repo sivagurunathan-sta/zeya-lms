@@ -1,22 +1,20 @@
 // src/pages/Admin/AdminDashboard.js
 import React, { useState } from 'react';
 import { useQuery } from 'react-query';
-import { 
-  Users, 
-  BookOpen, 
-  DollarSign, 
+import {
+  Users,
+  BookOpen,
+  DollarSign,
   Award,
-  TrendingUp,
   Calendar,
   Activity,
   CheckCircle,
   Clock,
   AlertCircle
-} from 'lucide-react';;
+} from 'lucide-react';
 import { adminAPI } from '../../services/adminAPI';
 import AnalyticsDashboard from '../../components/Analytics/Dashboard';
 import StatsCard from '../../components/Analytics/StatsCard';
-import Chart from '../../components/Analytics/Chart';
 import Card from '../../components/UI/Card';
 import Badge from '../../components/UI/Badge';
 import Button from '../../components/UI/Button';
