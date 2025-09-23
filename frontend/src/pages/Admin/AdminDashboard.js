@@ -6,6 +6,7 @@ import {
   BookOpen,
   DollarSign,
   Award,
+  TrendingUp,
   Calendar,
   Activity,
   CheckCircle,
