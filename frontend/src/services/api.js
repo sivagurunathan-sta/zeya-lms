@@ -177,7 +177,8 @@ if (isDemoMode) {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (isDemoMode && (!error?.response)) {
+    // Fallback to mock on network errors (no response), even if REACT_APP_API_URL is set
+    if (!error?.response && error?.config) {
       const mock = mockResponse(error.config || {});
       return Promise.resolve({ data: mock, status: 200, statusText: 'OK', headers: {}, config: error.config });
     }
