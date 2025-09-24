@@ -105,7 +105,7 @@ const StudentDashboard = () => {
           Welcome back, {user?.firstName}! 👋
         </h1>
         <p className="opacity-90">
-          Continue your learning journey and achieve your goals.
+          {subtitle}
         </p>
       </div>
 
