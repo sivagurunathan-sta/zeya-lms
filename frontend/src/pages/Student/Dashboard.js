@@ -10,6 +10,10 @@ import { useContentKeys } from '../../hooks/useContent';
 
 const StudentDashboard = () => {
   const { user } = useSelector((state) => state.auth);
+  const { data: contentItems = [] } = useContentKeys(['dashboard.welcomeSubtitle', 'ui.activeCoursesTitle', 'ui.viewAll']);
+  const subtitle = (contentItems.find(i => i.key === 'dashboard.welcomeSubtitle')?.value) || 'Continue your learning journey and achieve your goals.';
+  const activeCoursesTitle = (contentItems.find(i => i.key === 'ui.activeCoursesTitle')?.value) || 'Active Courses';
+  const viewAllLabel = (contentItems.find(i => i.key === 'ui.viewAll')?.value) || 'View All';
 
   // Mock data - replace with real API calls
   const stats = {
