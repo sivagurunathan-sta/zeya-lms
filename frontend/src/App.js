@@ -34,6 +34,7 @@ import NotFound from './pages/NotFound';
 import ProtectedRoute from './components/Route/ProtectedRoute';
 import AdminRoute from './components/Route/AdminRoute';
 
+import { useEffect } from 'react';
 function App() {
   const dispatch = useDispatch();
 
