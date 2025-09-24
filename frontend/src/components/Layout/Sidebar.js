@@ -36,7 +36,8 @@ const Sidebar = () => {
     { icon: Settings, label: 'Content Manager', path: '/admin/content' },
   ];
 
-  const menuItems = user?.role === 'ADMIN' ? adminMenuItems : studentMenuItems;
+  const isAdminRoute = location.pathname.startsWith('/admin');
+  const menuItems = isAdminRoute ? adminMenuItems : studentMenuItems;
 
   return (
     <>
