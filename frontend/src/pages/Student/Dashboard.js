@@ -126,10 +126,10 @@ const StudentDashboard = () => {
         {/* Active Courses */}
         <div className="lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">Active Courses</h2>
+            <h2 className="text-xl font-semibold text-gray-900">{activeCoursesTitle}</h2>
             <Link to="/courses">
               <Button variant="outline" size="sm">
-                View All
+                {viewAllLabel}
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
