@@ -15,11 +15,11 @@ const ProgressBar = ({
   };
 
   const colors = {
-    blue: 'bg-blue-600',
-    green: 'bg-green-600',
-    yellow: 'bg-yellow-600',
-    red: 'bg-red-600',
-    purple: 'bg-purple-600'
+    blue: 'bg-gradient-to-r from-blue-500 to-blue-700',
+    green: 'bg-gradient-to-r from-green-500 to-green-700',
+    yellow: 'bg-gradient-to-r from-yellow-500 to-yellow-700',
+    red: 'bg-gradient-to-r from-red-500 to-red-700',
+    purple: 'bg-gradient-to-r from-purple-500 to-purple-700'
   };
 
   const clampedProgress = Math.min(Math.max(progress, 0), 100);
