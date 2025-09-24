@@ -33,6 +33,7 @@ const Sidebar = () => {
     { icon: FileText, label: 'Review Submissions', path: '/admin/submissions' },
     { icon: BarChart3, label: 'Analytics', path: '/admin/analytics' },
     { icon: CreditCard, label: 'Payments', path: '/admin/payments' },
+    { icon: Settings, label: 'Content Manager', path: '/admin/content' },
   ];
 
   const menuItems = user?.role === 'ADMIN' ? adminMenuItems : studentMenuItems;
