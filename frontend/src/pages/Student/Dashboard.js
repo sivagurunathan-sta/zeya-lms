@@ -6,6 +6,7 @@ import StatsCard from '../../components/Analytics/StatsCard';
 import EnrollmentProgress from '../../components/Internship/EnrollmentProgress';
 import Button from '../../components/UI/Button';
 import Card from '../../components/UI/Card';
+import { useContentKeys } from '../../hooks/useContent';
 
 const StudentDashboard = () => {
   const { user } = useSelector((state) => state.auth);
