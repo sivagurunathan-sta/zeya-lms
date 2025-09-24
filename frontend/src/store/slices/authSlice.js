@@ -195,5 +195,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { logout, clearError, updateProfile } = authSlice.actions;
+export const { logout, clearError, updateProfile, demoLoginAdmin, demoLoginStudent } = authSlice.actions;
 export default authSlice.reducer;
