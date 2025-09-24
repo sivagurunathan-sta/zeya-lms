@@ -45,13 +45,15 @@ function App() {
     <SocketProvider>
       <div className="App">
         <Routes>
-          {/* Main App Routes (no auth required) */}
-          <Route path="/" element={
-            <ProtectedRoute>
-              <Layout />
-            </ProtectedRoute>
-          }>
-            {/* Student Routes */}
+          {/* Student Site */}
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="internships" element={<Internships />} />
@@ -61,17 +63,24 @@ function App() {
             <Route path="certificates" element={<Certificates />} />
             <Route path="profile" element={<Profile />} />
             <Route path="payment/:enrollmentId" element={<PaymentPage />} />
+          </Route>
 
-            {/* Admin Routes */}
-            <Route path="admin" element={<AdminRoute />}>
-              <Route index element={<AdminDashboard />} />
-              <Route path="internships" element={<ManageInternships />} />
-              <Route path="students" element={<ManageStudents />} />
-              <Route path="submissions" element={<ReviewSubmissions />} />
-              <Route path="analytics" element={<Analytics />} />
-              <Route path="payments" element={<PaymentHistory />} />
-              <Route path="content" element={<ContentManager />} />
-            </Route>
+          {/* Admin Site */}
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <AdminLayout />
+              </AdminRoute>
+            }
+          >
+            <Route index element={<AdminDashboard />} />
+            <Route path="internships" element={<ManageInternships />} />
+            <Route path="students" element={<ManageStudents />} />
+            <Route path="submissions" element={<ReviewSubmissions />} />
+            <Route path="analytics" element={<Analytics />} />
+            <Route path="payments" element={<PaymentHistory />} />
+            <Route path="content" element={<ContentManager />} />
           </Route>
 
           {/* Catch all route */}
