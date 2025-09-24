@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Menu, X, Bell, User, LogOut, Settings } from 'lucide-react';
 import { logout } from '../../store/slices/authSlice';
 import NotificationDropdown from '../UI/NotificationDropdown';
+import { useContentKeys } from '../../hooks/useContent';
 
 const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
