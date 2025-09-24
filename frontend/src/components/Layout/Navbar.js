@@ -6,6 +6,12 @@ import { logout } from '../../store/slices/authSlice';
 import NotificationDropdown from '../UI/NotificationDropdown';
 import { useContentKeys } from '../../hooks/useContent';
 
+const BrandName = () => {
+  const { data: items = [] } = useContentKeys(['brand.name']);
+  const brand = (items.find(i => i.key === 'brand.name')?.value) || 'Student LMS';
+  return <span className="ml-2 text-xl font-bold text-gray-900">{brand}</span>;
+};
+
 const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
