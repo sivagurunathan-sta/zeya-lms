@@ -3,9 +3,12 @@ import { useSelector } from 'react-redux';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 
 const AdminRoute = ({ children }) => {
-  const { user } = useSelector((s) => s.auth);
+  const { user, isAuthenticated, token } = useSelector((s) => s.auth);
   const location = useLocation();
 
+  if (!isAuthenticated || !token) {
+    return <Navigate to="/auth/login" state={{ from: location }} replace />;
+  }
   if (!user || user.role !== 'ADMIN') {
     return <Navigate to="/dashboard" state={{ from: location }} replace />;
   }
