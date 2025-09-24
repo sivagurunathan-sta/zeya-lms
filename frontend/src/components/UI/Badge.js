@@ -23,7 +23,7 @@ const Badge = ({
   };
 
   return (
-    <span className={`inline-flex items-center font-medium rounded-full ${variants[variant]} ${sizes[size]} ${className}`}>
+    <span className={`inline-flex items-center font-medium rounded-full shadow-sm ${variants[variant]} ${sizes[size]} ${className}`}>
       {children}
     </span>
   );

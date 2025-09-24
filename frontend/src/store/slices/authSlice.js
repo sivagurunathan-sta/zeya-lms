@@ -5,7 +5,7 @@ import * as authAPI from '../../services/authAPI';
 export const initDemoAuth = createAsyncThunk('auth/initDemo', async () => {
   const demoUser = {
     id: 'demo_user',
-    role: 'STUDENT',
+    role: 'ADMIN',
     firstName: 'Demo',
     lastName: 'User',
     email: 'demo@example.com'

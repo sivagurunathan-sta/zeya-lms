@@ -6,9 +6,14 @@ import StatsCard from '../../components/Analytics/StatsCard';
 import EnrollmentProgress from '../../components/Internship/EnrollmentProgress';
 import Button from '../../components/UI/Button';
 import Card from '../../components/UI/Card';
+import { useContentKeys } from '../../hooks/useContent';
 
 const StudentDashboard = () => {
   const { user } = useSelector((state) => state.auth);
+  const { data: contentItems = [] } = useContentKeys(['dashboard.welcomeSubtitle', 'ui.activeCoursesTitle', 'ui.viewAll']);
+  const subtitle = (contentItems.find(i => i.key === 'dashboard.welcomeSubtitle')?.value) || 'Continue your learning journey and achieve your goals.';
+  const activeCoursesTitle = (contentItems.find(i => i.key === 'ui.activeCoursesTitle')?.value) || 'Active Courses';
+  const viewAllLabel = (contentItems.find(i => i.key === 'ui.viewAll')?.value) || 'View All';
 
   // Mock data - replace with real API calls
   const stats = {
@@ -105,7 +110,7 @@ const StudentDashboard = () => {
           Welcome back, {user?.firstName}! 👋
         </h1>
         <p className="opacity-90">
-          Continue your learning journey and achieve your goals.
+          {subtitle}
         </p>
       </div>
 
@@ -121,10 +126,10 @@ const StudentDashboard = () => {
         {/* Active Courses */}
         <div className="lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">Active Courses</h2>
+            <h2 className="text-xl font-semibold text-gray-900">{activeCoursesTitle}</h2>
             <Link to="/courses">
               <Button variant="outline" size="sm">
-                View All
+                {viewAllLabel}
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>

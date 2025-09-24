@@ -33,6 +33,7 @@ const Sidebar = () => {
     { icon: FileText, label: 'Review Submissions', path: '/admin/submissions' },
     { icon: BarChart3, label: 'Analytics', path: '/admin/analytics' },
     { icon: CreditCard, label: 'Payments', path: '/admin/payments' },
+    { icon: Settings, label: 'Content Manager', path: '/admin/content' },
   ];
 
   const menuItems = user?.role === 'ADMIN' ? adminMenuItems : studentMenuItems;
@@ -42,7 +43,7 @@ const Sidebar = () => {
       {/* Desktop Sidebar */}
       <div className="hidden lg:flex lg:flex-shrink-0">
         <div className="flex flex-col w-64">
-          <div className="flex flex-col flex-1 min-h-0 bg-white border-r border-gray-200">
+          <div className="flex flex-col flex-1 min-h-0 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-r border-gray-200">
             <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
               <nav className="mt-5 flex-1 px-2 space-y-1">
                 {menuItems.map((item) => (
@@ -68,7 +69,7 @@ const Sidebar = () => {
       </div>
 
       {/* Mobile Sidebar - This would be shown/hidden based on mobile menu state */}
-      <div className="lg:hidden fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 pt-16 transform -translate-x-full transition-transform duration-300 ease-in-out">
+      <div className="lg:hidden fixed inset-y-0 left-0 z-50 w-64 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70 border-r border-gray-200 pt-16 transform -translate-x-full transition-transform duration-300 ease-in-out">
         <div className="flex flex-col flex-1 min-h-0">
           <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
             <nav className="mt-5 flex-1 px-2 space-y-1">

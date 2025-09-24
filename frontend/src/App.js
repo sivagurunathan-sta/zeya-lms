@@ -24,6 +24,7 @@ import ManageStudents from './pages/Admin/ManageStudents';
 import ReviewSubmissions from './pages/Admin/ReviewSubmissions';
 import Analytics from './pages/Admin/Analytics';
 import PaymentHistory from './pages/Admin/PaymentHistory';
+import ContentManager from './pages/Admin/ContentManager';
 
 // Shared Pages
 import NotFound from './pages/NotFound';
@@ -68,6 +69,7 @@ function App() {
               <Route path="submissions" element={<ReviewSubmissions />} />
               <Route path="analytics" element={<Analytics />} />
               <Route path="payments" element={<PaymentHistory />} />
+              <Route path="content" element={<ContentManager />} />
             </Route>
           </Route>
 
