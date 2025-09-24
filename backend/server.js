@@ -79,6 +79,7 @@ app.use('/api/payments', require('./routes/payments'));
 app.use('/api/certificates', require('./routes/certificates'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/upload', require('./routes/upload'));
+app.use('/api/content', require('./routes/content'));
 
 // Error Handling Middleware
 app.use(errorHandler);
