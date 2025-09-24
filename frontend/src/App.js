@@ -68,6 +68,12 @@ function App() {
               <Route path="submissions" element={<ReviewSubmissions />} />
               <Route path="analytics" element={<Analytics />} />
               <Route path="payments" element={<PaymentHistory />} />
+              <Route path="content" element={<AdminRoute />}>
+                <Route index element={<div />} />
+              </Route>
+            </Route>
+            <Route path="admin/content" element={<AdminRoute />}>
+              <Route index element={React.createElement(require('./pages/Admin/ContentManager').default)} />
             </Route>
           </Route>
 
