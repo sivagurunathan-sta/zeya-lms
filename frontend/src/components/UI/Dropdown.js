@@ -36,7 +36,7 @@ const Dropdown = ({
       </div>
       
       {isOpen && (
-        <div className={`absolute z-50 ${positions[position]} min-w-48 bg-white rounded-md shadow-lg border border-gray-200 py-1`}>
+        <div className={`absolute z-50 ${positions[position]} min-w-48 bg-white rounded-lg shadow-xl ring-1 ring-black/5 py-1 animate-fade-in`}>
           {children}
         </div>
       )}
