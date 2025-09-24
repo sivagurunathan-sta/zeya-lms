@@ -9,6 +9,7 @@ const defaultKeys = [
   { key: 'dashboard.welcomeSubtitle', label: 'Dashboard Welcome Subtitle', placeholder: 'Continue your learning journey and achieve your goals.' },
   { key: 'ui.activeCoursesTitle', label: 'Active Courses Title', placeholder: 'Active Courses' },
   { key: 'ui.viewAll', label: 'View All Button', placeholder: 'View All' },
+  { key: 'ui.studentBackgroundUrl', label: 'Student Site Background Image URL', placeholder: 'https://example.com/background.jpg' },
 ];
 
 const ContentManager = () => {
