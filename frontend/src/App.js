@@ -6,6 +6,7 @@ import { initDemoAuth } from './store/slices/authSlice';
 
 // Layout Components
 import Layout from './components/Layout/Layout';
+import AdminLayout from './components/Layout/AdminLayout';
 
 // Student Pages
 import Dashboard from './pages/Student/Dashboard';
