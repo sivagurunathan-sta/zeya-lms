@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useForm } from 'react-hook-form';
 import { Eye, EyeOff } from 'lucide-react';
-import { loginUser, clearError } from '../../store/slices/authSlice';
+import { loginUser, clearError, demoLoginAdmin, demoLoginStudent } from '../../store/slices/authSlice';
 import Button from '../../components/UI/Button';
 import Input from '../../components/Form/Input';
 import FormError from '../../components/Form/FormError';
@@ -18,6 +18,7 @@ const Login = () => {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors }
   } = useForm();
 
@@ -25,9 +26,20 @@ const Login = () => {
 
   const onSubmit = async (data) => {
     dispatch(clearError());
+    if (data.email === 'admin@example.com' && data.password === 'admin123') {
+      dispatch(demoLoginAdmin());
+      navigate('/admin', { replace: true });
+      return;
+    }
+    if (data.email === 'student@example.com' && data.password === 'student123') {
+      dispatch(demoLoginStudent());
+      navigate('/dashboard', { replace: true });
+      return;
+    }
     const result = await dispatch(loginUser(data));
     if (result.type === 'auth/login/fulfilled') {
-      navigate(from, { replace: true });
+      const next = result.payload?.user?.role === 'ADMIN' ? '/admin' : from;
+      navigate(next, { replace: true });
     }
   };
 
@@ -104,6 +116,21 @@ const Login = () => {
         >
           Sign in
         </Button>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Button type="button" variant="secondary" onClick={() => { setValue('email','admin@example.com'); setValue('password','admin123'); }}>
+            Use Admin Demo Credentials
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => { setValue('email','student@example.com'); setValue('password','student123'); }}>
+            Use Student Demo Credentials
+          </Button>
+          <Button type="button" onClick={() => { dispatch(demoLoginAdmin()); navigate('/admin', { replace: true }); }}>
+            One-click Admin Login
+          </Button>
+          <Button type="button" onClick={() => { dispatch(demoLoginStudent()); navigate('/dashboard', { replace: true }); }}>
+            One-click Student Login
+          </Button>
+        </div>
 
         <div className="text-center">
           <span className="text-gray-600">Don't have an account? </span>
