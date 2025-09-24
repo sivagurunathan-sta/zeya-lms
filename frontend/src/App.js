@@ -30,6 +30,10 @@ import ContentManager from './pages/Admin/ContentManager';
 // Shared Pages
 import NotFound from './pages/NotFound';
 
+// Auth Pages
+import Login from './pages/Auth/Login';
+import Register from './pages/Auth/Register';
+
 // Protected Route Component
 import ProtectedRoute from './components/Route/ProtectedRoute';
 import AdminRoute from './components/Route/AdminRoute';
