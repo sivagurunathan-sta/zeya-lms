@@ -12,7 +12,7 @@ const BrandName = () => {
   return <span className="ml-2 text-xl font-bold text-gray-900">{brand}</span>;
 };
 
-const Navbar = () => {
+const Navbar = ({ homePath = "/dashboard" }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const { user } = useSelector((state) => state.auth);
@@ -38,7 +38,7 @@ const Navbar = () => {
                 <Menu className="h-6 w-6" />
               )}
             </button>
-            <Link to="/dashboard" className="flex items-center ml-4 lg:ml-0">
+            <Link to={homePath} className="flex items-center ml-4 lg:ml-0">
               <div className="flex-shrink-0">
                 <div className="h-8 w-8 bg-primary-600 rounded-lg flex items-center justify-center shadow-sm ring-1 ring-primary-600/10">
                   <span className="text-white font-bold text-lg">S</span>
