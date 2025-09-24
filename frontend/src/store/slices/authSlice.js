@@ -91,6 +91,34 @@ const authSlice = createSlice({
         state.user = { ...state.user, ...action.payload };
       }
     },
+    demoLoginAdmin: (state) => {
+      const token = 'demo-admin-token';
+      localStorage.setItem('token', token);
+      state.user = {
+        id: 'demo_admin',
+        role: 'ADMIN',
+        firstName: 'Admin',
+        lastName: 'User',
+        email: 'admin@example.com'
+      };
+      state.token = token;
+      state.isAuthenticated = true;
+      state.error = null;
+    },
+    demoLoginStudent: (state) => {
+      const token = 'demo-student-token';
+      localStorage.setItem('token', token);
+      state.user = {
+        id: 'demo_student',
+        role: 'STUDENT',
+        firstName: 'Demo',
+        lastName: 'Student',
+        email: 'student@example.com'
+      };
+      state.token = token;
+      state.isAuthenticated = true;
+      state.error = null;
+    },
   },
   extraReducers: (builder) => {
     builder
