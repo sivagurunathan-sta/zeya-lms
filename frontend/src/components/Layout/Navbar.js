@@ -37,7 +37,7 @@ const Navbar = () => {
                   <span className="text-white font-bold text-lg">S</span>
                 </div>
               </div>
-              <span className="ml-2 text-xl font-bold text-gray-900">Student LMS</span>
+              <BrandName />
             </Link>
           </div>
 
