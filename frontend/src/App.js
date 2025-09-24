@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { SocketProvider } from './contexts/SocketContext';
-import { initDemoAuth } from './store/slices/authSlice';
 
 // Layout Components
 import Layout from './components/Layout/Layout';
@@ -40,10 +39,6 @@ import AdminRoute from './components/Route/AdminRoute';
 
 function App() {
   const dispatch = useDispatch();
-
-  useEffect(() => {
-    dispatch(initDemoAuth());
-  }, [dispatch]);
 
   return (
     <SocketProvider>
