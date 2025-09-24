@@ -33,8 +33,8 @@ const ProgressBar = ({
         </div>
       )}
       <div className={`w-full bg-gray-200 rounded-full ${sizes[size]} overflow-hidden`}>
-        <div 
-          className={`${colors[color]} ${sizes[size]} rounded-full transition-all duration-500 ease-out`}
+        <div
+          className={`${colors[color]} ${sizes[size]} rounded-full progress-bar`}
           style={{ width: `${clampedProgress}%` }}
         ></div>
       </div>
