@@ -26,8 +26,8 @@ const Card = ({
   const hoverEffect = hover ? 'hover:shadow-md transition-shadow duration-200' : '';
 
   return (
-    <div 
-      className={`bg-white rounded-lg border border-gray-200 ${shadows[shadow]} ${paddings[padding]} ${hoverEffect} ${className}`}
+    <div
+      className={`bg-white rounded-lg border border-gray-200 ${shadows[shadow]} ${paddings[padding]} ${hoverEffect} card-hover animate-fade-in ${className}`}
       {...props}
     >
       {children}
