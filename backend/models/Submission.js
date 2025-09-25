@@ -6,270 +6,233 @@ const submissionSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
-  course: {
+  task: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Course',
+    ref: 'Task',
     required: true
   },
-  assignment: {
-    type: mongoose.Schema.Types.ObjectId,
-    required: true // References assignment ID within course
-  },
-  submissionData: {
-    text: {
-      type: String
-    },
-    files: [{
-      filename: {
-        type: String,
-        required: true
-      },
-      originalName: {
-        type: String,
-        required: true
-      },
-      url: {
-        type: String,
-        required: true
-      },
-      fileType: {
-        type: String,
-        required: true
-      },
-      size: {
-        type: Number
-      },
-      uploadedAt: {
-        type: Date,
-        default: Date.now
-      }
-    }],
-    externalLinks: [{
-      title: {
-        type: String,
-        required: true
-      },
-      url: {
-        type: String,
-        required: true
-      },
-      description: {
-        type: String
-      }
-    }]
-  },
-  status: {
+  // GitHub repository link (main requirement)
+  githubRepo: {
     type: String,
-    enum: ['submitted', 'under_review', 'approved', 'rejected', 'revision_required'],
-    default: 'submitted'
-  },
-  score: {
-    points: {
-      type: Number,
-      min: 0
-    },
-    maxPoints: {
-      type: Number,
-      required: true,
-      default: 100
-    },
-    percentage: {
-      type: Number,
-      min: 0,
-      max: 100
+    required: true,
+    trim: true,
+    validate: {
+      validator: function(v) {
+        return /^https:\/\/github\.com\/[\w\-\.]+\/[\w\-\.]+\/?$/.test(v);
+      },
+      message: 'Please provide a valid GitHub repository URL'
     }
   },
-  feedback: {
-    reviewer: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    },
-    comments: {
-      type: String
-    },
-    reviewedAt: {
-      type: Date
-    },
-    rubric: [{
-      criteria: {
-        type: String,
-        required: true
+  // Live demo link (optional)
+  liveDemoUrl: {
+    type: String,
+    trim: true,
+    validate: {
+      validator: function(v) {
+        if (!v) return true; // Optional field
+        return /^https?:\/\/.+/.test(v);
       },
-      points: {
-        type: Number,
-        required: true
-      },
-      maxPoints: {
-        type: Number,
-        required: true
-      },
-      comment: {
-        type: String
-      }
-    }]
+      message: 'Please provide a valid URL for live demo'
+    }
   },
-  submissionHistory: [{
-    version: {
-      type: Number,
-      required: true
-    },
-    submittedAt: {
+  // Submission description/notes
+  submissionText: {
+    type: String,
+    maxlength: 2000,
+    trim: true
+  },
+  // Additional files (screenshots, docs, etc.)
+  additionalFiles: [{
+    filename: String,
+    originalName: String,
+    url: String,
+    fileType: String,
+    size: Number,
+    uploadedAt: {
       type: Date,
-      required: true
-    },
-    submissionData: {
-      text: String,
-      files: [{
-        filename: String,
-        originalName: String,
-        url: String,
-        fileType: String,
-        size: Number
-      }]
-    },
-    status: {
-      type: String,
-      enum: ['submitted', 'under_review', 'approved', 'rejected', 'revision_required']
+      default: Date.now
     }
   }],
-  dueDate: {
-    type: Date
+  // Completion details
+  completionTime: {
+    type: Number, // hours taken to complete
+    min: 0
   },
   submittedAt: {
     type: Date,
     default: Date.now
   },
+  // Status and review
+  status: {
+    type: String,
+    enum: ['submitted', 'under_review', 'approved', 'rejected', 'revision_required'],
+    default: 'submitted'
+  },
+  // Scoring
+  score: {
+    points: {
+      type: Number,
+      min: 0,
+      max: 100
+    },
+    breakdown: [{
+      criterion: String,
+      points: Number,
+      maxPoints: Number,
+      comment: String
+    }]
+  },
+  // Review and feedback
+  review: {
+    reviewer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    reviewedAt: Date,
+    overallFeedback: String,
+    strengths: [String],
+    improvements: [String],
+    codeQualityScore: {
+      type: Number,
+      min: 0,
+      max: 100
+    },
+    functionalityScore: {
+      type: Number,
+      min: 0,
+      max: 100
+    },
+    documentationScore: {
+      type: Number,
+      min: 0,
+      max: 100
+    }
+  },
+  // Automated analysis (future feature)
+  automaticAnalysis: {
+    codeComplexity: Number,
+    testCoverage: Number,
+    linesOfCode: Number,
+    filesCount: Number,
+    technologies: [String],
+    lastCommitDate: Date
+  },
+  // Timing and deadlines
+  dueDate: Date,
   isLate: {
     type: Boolean,
     default: false
   },
-  attempts: {
+  lateBy: {
+    type: Number, // hours late
+    default: 0
+  },
+  // Resubmission tracking
+  attempt: {
     type: Number,
-    default: 1
+    default: 1,
+    min: 1
   },
   maxAttempts: {
     type: Number,
     default: 3
-  }
+  },
+  previousSubmissions: [{
+    githubRepo: String,
+    submittedAt: Date,
+    score: Number,
+    feedback: String,
+    status: String
+  }]
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
-// Indexes
-submissionSchema.index({ student: 1, course: 1 });
+// Indexes for performance
+submissionSchema.index({ student: 1, task: 1 });
 submissionSchema.index({ status: 1, submittedAt: -1 });
-submissionSchema.index({ course: 1, assignment: 1 });
+submissionSchema.index({ task: 1, status: 1 });
 submissionSchema.index({ dueDate: 1, isLate: 1 });
-
-// Pre-save middleware to calculate percentage and check if late
-submissionSchema.pre('save', function(next) {
-  // Calculate percentage if score is provided
-  if (this.score.points !== undefined && this.score.maxPoints) {
-    this.score.percentage = Math.round((this.score.points / this.score.maxPoints) * 100);
-  }
-  
-  // Check if submission is late
-  if (this.dueDate && this.submittedAt > this.dueDate) {
-    this.isLate = true;
-  }
-  
-  next();
-});
+submissionSchema.index({ 'review.reviewer': 1 });
 
 // Virtual for grade letter
 submissionSchema.virtual('gradeLetter').get(function() {
-  if (!this.score.percentage) return 'N/A';
+  if (!this.score.points) return 'N/A';
   
-  const percentage = this.score.percentage;
-  if (percentage >= 97) return 'A+';
-  if (percentage >= 93) return 'A';
-  if (percentage >= 90) return 'A-';
-  if (percentage >= 87) return 'B+';
-  if (percentage >= 83) return 'B';
-  if (percentage >= 80) return 'B-';
-  if (percentage >= 77) return 'C+';
-  if (percentage >= 73) return 'C';
-  if (percentage >= 70) return 'C-';
-  if (percentage >= 67) return 'D+';
-  if (percentage >= 65) return 'D';
+  const percentage = this.score.points;
+  if (percentage >= 90) return 'A+';
+  if (percentage >= 80) return 'A';
+  if (percentage >= 70) return 'B';
+  if (percentage >= 60) return 'C';
+  if (percentage >= 50) return 'D';
   return 'F';
 });
 
 // Virtual for days late
 submissionSchema.virtual('daysLate').get(function() {
   if (!this.isLate || !this.dueDate) return 0;
-  
-  const diffTime = this.submittedAt - this.dueDate;
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return diffDays;
+  return Math.ceil(this.lateBy / 24);
 });
 
-// Method to add feedback
-submissionSchema.methods.addFeedback = function(reviewerId, comments, score, rubric = []) {
-  this.feedback = {
+// Virtual for can resubmit
+submissionSchema.virtual('canResubmit').get(function() {
+  return this.attempt < this.maxAttempts && this.status === 'revision_required';
+});
+
+// Pre-save middleware to check if late
+submissionSchema.pre('save', function(next) {
+  if (this.dueDate && this.submittedAt > this.dueDate) {
+    this.isLate = true;
+    this.lateBy = Math.ceil((this.submittedAt - this.dueDate) / (1000 * 60 * 60)); // hours
+  }
+  next();
+});
+
+// Method to add review
+submissionSchema.methods.addReview = function(reviewerId, overallFeedback, scores, breakdown) {
+  this.review = {
     reviewer: reviewerId,
-    comments: comments,
     reviewedAt: new Date(),
-    rubric: rubric
+    overallFeedback,
+    ...scores
   };
   
-  if (score !== undefined) {
-    this.score.points = score;
+  if (breakdown) {
+    this.score.breakdown = breakdown;
   }
+  
+  // Calculate final score
+  const totalPoints = breakdown ? breakdown.reduce((sum, item) => sum + item.points, 0) : 0;
+  this.score.points = totalPoints;
   
   return this.save();
 };
 
-// Method to update status
-submissionSchema.methods.updateStatus = function(newStatus, reviewerId) {
-  this.status = newStatus;
+// Method to resubmit
+submissionSchema.methods.resubmit = function(newGithubRepo, newSubmissionText) {
+  // Store previous submission
+  this.previousSubmissions.push({
+    githubRepo: this.githubRepo,
+    submittedAt: this.submittedAt,
+    score: this.score.points,
+    feedback: this.review.overallFeedback,
+    status: this.status
+  });
   
-  if (reviewerId && !this.feedback.reviewer) {
-    this.feedback.reviewer = reviewerId;
-    this.feedback.reviewedAt = new Date();
-  }
-  
-  return this.save();
-};
-
-// Method to add new version
-submissionSchema.methods.addVersion = function(submissionData) {
-  const newVersion = {
-    version: this.submissionHistory.length + 1,
-    submittedAt: new Date(),
-    submissionData: submissionData,
-    status: 'submitted'
-  };
-  
-  this.submissionHistory.push(newVersion);
-  this.submissionData = submissionData;
-  this.status = 'submitted';
+  // Update with new submission
+  this.githubRepo = newGithubRepo;
+  this.submissionText = newSubmissionText;
   this.submittedAt = new Date();
-  this.attempts += 1;
+  this.status = 'submitted';
+  this.attempt += 1;
+  
+  // Clear previous review
+  this.review = {};
+  this.score = {};
   
   return this.save();
-};
-
-// Static method to get submissions by course
-submissionSchema.statics.findByCourse = function(courseId, status = null) {
-  const query = { course: courseId };
-  if (status) query.status = status;
-  
-  return this.find(query)
-    .populate('student', 'profile.firstName profile.lastName userId')
-    .populate('feedback.reviewer', 'profile.firstName profile.lastName')
-    .sort({ submittedAt: -1 });
-};
-
-// Static method to get submissions by student
-submissionSchema.statics.findByStudent = function(studentId, courseId = null) {
-  const query = { student: studentId };
-  if (courseId) query.course = courseId;
-  
-  return this.find(query)
-    .populate('course', 'title')
-    .populate('feedback.reviewer', 'profile.firstName profile.lastName')
-    .sort({ submittedAt: -1 });
 };
 
 module.exports = mongoose.model('Submission', submissionSchema);
