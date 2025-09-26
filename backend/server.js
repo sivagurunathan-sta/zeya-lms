@@ -213,10 +213,11 @@ const paymentSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['razorpay', 'stripe', 'paypal', 'bank_transfer'],
+    enum: ['razorpay', 'stripe', 'paypal', 'bank_transfer', 'upi_manual'],
     default: 'razorpay'
   },
   transactionId: String,
+  proofUrl: String,
   gatewayResponse: Object,
   failureReason: String,
   refundId: String,
