@@ -26,19 +26,10 @@ const Login = () => {
 
   const onSubmit = async (data) => {
     dispatch(clearError());
-    if (data.email === 'admin@example.com' && data.password === 'admin123') {
-      dispatch(demoLoginAdmin());
-      navigate('/admin', { replace: true });
-      return;
-    }
-    if (data.email === 'student@example.com' && data.password === 'student123') {
-      dispatch(demoLoginStudent());
-      navigate('/dashboard', { replace: true });
-      return;
-    }
-    const result = await dispatch(loginUser(data));
+    const result = await dispatch(loginUser({ userId: data.userId, password: data.password }));
     if (result.type === 'auth/login/fulfilled') {
-      const next = result.payload?.user?.role === 'ADMIN' ? '/admin' : from;
+      const role = (result.payload?.user?.role || '').toUpperCase();
+      const next = role === 'ADMIN' ? '/admin' : from;
       navigate(next, { replace: true });
     }
   };
