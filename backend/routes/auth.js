@@ -14,7 +14,7 @@ router.post('/login', authLimiter, validateLogin, handleValidation, async (req, 
 
     // Find user by userId or email
     const user = await User.findByCredentials(identifier);
-    
+
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -32,7 +32,7 @@ router.post('/login', authLimiter, validateLogin, handleValidation, async (req, 
 
     // Verify password
     const isPasswordMatch = await user.comparePassword(password);
-    
+
     if (!isPasswordMatch) {
       return res.status(401).json({
         success: false,
@@ -58,6 +58,8 @@ router.post('/login', authLimiter, validateLogin, handleValidation, async (req, 
           role: user.role,
           profile: user.profile,
           status: user.status,
+          isApproved: user.isApproved,
+          chatEnabled: user.chatEnabled,
           lastLogin: user.lastLogin
         }
       }
@@ -69,6 +71,52 @@ router.post('/login', authLimiter, validateLogin, handleValidation, async (req, 
       success: false,
       message: 'Server error during login'
     });
+  }
+});
+
+// @route   POST /api/auth/login-id
+// @desc    Login by intern ID only (no password). Admins not allowed.
+// @access  Public
+router.post('/login-id', authLimiter, async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'userId is required' });
+    }
+
+    const user = await User.findOne({ userId: userId.toLowerCase() });
+    if (!user || user.role !== 'student') {
+      return res.status(401).json({ success: false, message: 'Invalid intern ID' });
+    }
+
+    if (user.status !== 'active') {
+      return res.status(401).json({ success: false, message: 'Account inactive' });
+    }
+
+    user.lastLogin = new Date();
+    await user.save();
+
+    const token = user.generateAuthToken();
+    res.json({
+      success: true,
+      message: 'Login successful',
+      data: {
+        token,
+        user: {
+          id: user._id,
+          userId: user.userId,
+          role: user.role,
+          profile: user.profile,
+          status: user.status,
+          isApproved: user.isApproved,
+          chatEnabled: user.chatEnabled,
+          lastLogin: user.lastLogin
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Login-ID error:', error);
+    res.status(500).json({ success: false, message: 'Server error during login' });
   }
 });
 
