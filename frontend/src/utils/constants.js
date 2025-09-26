@@ -301,3 +301,5 @@ export const SUPPORT_URLS = {
   TERMS: '/terms',
   PRIVACY: '/privacy'
 };
+
+export const UPI_QR_URL = 'https://cdn.builder.io/api/v1/image/assets%2F57b6802dfd40481eb538711dccf4d0bf%2Fbd6232b08a4143b8812e669291d797d7?format=webp&width=800';
