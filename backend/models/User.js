@@ -70,6 +70,11 @@ const userSchema = new mongoose.Schema({
     enum: ['active', 'inactive', 'suspended'],
     default: 'active'
   },
+  // Approval & chat flags
+  isApproved: { type: Boolean, default: false },
+  chatEnabled: { type: Boolean, default: false },
+  // Prevent interns from editing their own immutable details
+  lockProfile: { type: Boolean, default: true },
   // Internship-specific fields
   internshipProgress: {
     currentDay: {
@@ -253,11 +258,13 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
 // Generate JWT token
 userSchema.methods.generateAuthToken = function() {
   return jwt.sign(
-    { 
-      id: this._id, 
-      userId: this.userId, 
+    {
+      id: this._id,
+      userId: this.userId,
       role: this.role,
-      email: this.profile.email
+      email: this.profile.email,
+      isApproved: this.isApproved,
+      chatEnabled: this.chatEnabled
     },
     process.env.JWT_SECRET || 'your-super-secret-jwt-key',
     { expiresIn: process.env.JWT_EXPIRE || '7d' }

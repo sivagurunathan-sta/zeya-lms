@@ -23,6 +23,92 @@ router.use(auth, adminOnly);
 // USER MANAGEMENT ROUTES
 // =====================
 
+// @route   POST /api/admin/intern-ids/bulk
+// @desc    Generate multiple intern IDs
+// @access  Private (Admin)
+router.post('/intern-ids/bulk', async (req, res) => {
+  try {
+    const { count = 1, prefix = 'INT' } = req.body || {};
+    const created = [];
+    for (let i = 0; i < Math.min(1000, Number(count)); i++) {
+      const rand = Math.random().toString(36).slice(2, 8).toUpperCase();
+      const userId = `${prefix}-${Date.now().toString().slice(-6)}-${rand}`;
+      const user = new User({
+        userId: userId.toLowerCase(),
+        password: Math.random().toString(36).slice(2, 10),
+        role: 'student',
+        profile: {
+          firstName: 'Intern',
+          lastName: 'User',
+          email: `${userId.toLowerCase().replace(/[^a-z0-9]/g,'')}@example.local`
+        },
+        status: 'active',
+        isApproved: false,
+        chatEnabled: false,
+        lockProfile: true
+      });
+      await user.save();
+      created.push({ id: user._id, userId: user.userId });
+    }
+
+    res.status(201).json({ success: true, data: { interns: created } });
+  } catch (error) {
+    console.error('Bulk create intern IDs error:', error);
+    res.status(500).json({ success: false, message: 'Failed to generate intern IDs' });
+  }
+});
+
+// @route   PUT /api/admin/interns/:id/approve
+// @desc    Approve intern (enables dashboard visibility; chat remains separately controlled)
+// @access  Private (Admin)
+router.put('/interns/:id/approve', validateObjectId('id'), handleValidation, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user || user.role !== 'student') {
+      return res.status(404).json({ success: false, message: 'Intern not found' });
+    }
+    user.isApproved = true;
+    user.status = 'active';
+    await user.save();
+    res.json({ success: true, message: 'Intern approved', data: { id: user._id, isApproved: user.isApproved } });
+  } catch (error) {
+    console.error('Approve intern error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// @route   PUT /api/admin/interns/:id/chat
+// @desc    Enable/disable chat for intern
+// @access  Private (Admin)
+router.put('/interns/:id/chat', validateObjectId('id'), handleValidation, async (req, res) => {
+  try {
+    const { enabled } = req.body;
+    const user = await User.findById(req.params.id);
+    if (!user || user.role !== 'student') {
+      return res.status(404).json({ success: false, message: 'Intern not found' });
+    }
+    user.chatEnabled = !!enabled;
+    await user.save();
+    res.json({ success: true, message: 'Chat setting updated', data: { id: user._id, chatEnabled: user.chatEnabled } });
+  } catch (error) {
+    console.error('Update chat error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// @route   GET /api/admin/intern-ids
+// @desc    List interns with IDs (compact view)
+// @access  Private (Admin)
+router.get('/intern-ids', async (req, res) => {
+  try {
+    const interns = await User.find({ role: 'student' }).select('userId isApproved chatEnabled createdAt');
+    res.json({ success: true, data: interns.map(u => ({ id: u._id, userId: u.userId, isApproved: u.isApproved, chatEnabled: u.chatEnabled, createdAt: u.createdAt })) });
+  } catch (error) {
+    console.error('List intern IDs error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 // @route   GET /api/admin/users
 // @desc    Get all users with pagination and filtering
 // @access  Private (Admin)

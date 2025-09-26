@@ -22,15 +22,20 @@ app.use('/uploads', express.static('uploads'));
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-jwt-key-change-in-production";
 
-// MongoDB Atlas Connection
-mongoose.connect("mongodb+srv://sivagurunathan875_db_user:shDbGcTzGPFwjwsW@cluster0.epgf9z2.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0", {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-}).then(() => {
-  console.log("✅ Connected to MongoDB Atlas");
-}).catch(err => {
-  console.error("❌ MongoDB connection error:", err);
-});
+// MongoDB Connection (via environment variable)
+const MONGODB_URI = process.env.MONGODB_URI;
+if (!MONGODB_URI) {
+  console.warn('⚠️ MONGODB_URI not set. Backend will run, but database features are disabled.');
+} else {
+  mongoose.connect(MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  }).then(() => {
+    console.log('✅ Connected to MongoDB');
+  }).catch(err => {
+    console.error('❌ MongoDB connection error:', err);
+  });
+}
 
 // File Upload Configuration
 const storage = multer.diskStorage({
@@ -2020,6 +2025,12 @@ if (!fs.existsSync(uploadDir)) {
 // Create default admin user and sample data
 const createDefaultData = async () => {
   try {
+    // Skip seeding if DB is not connected
+    if (mongoose.connection.readyState !== 1) {
+      console.warn('⚠️ Skipping default data creation: no MongoDB connection.');
+      return;
+    }
+
     // Create default admin
     const adminExists = await User.findOne({ role: 'admin' });
     
