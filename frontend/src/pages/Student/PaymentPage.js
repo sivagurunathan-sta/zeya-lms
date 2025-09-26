@@ -102,7 +102,27 @@ const PaymentPage = () => {
     rzp.open();
   };
 
-  const handlePayment = (enrollmentId, paymentMethod) => {
+  const manualMutation = useMutation(
+    ({ enrollmentId, proof }) => paymentAPI.createManualUPIPayment({ itemId: enrollmentId, amount: 499, type: 'certificate', proof }),
+    {
+      onSuccess: (data) => {
+        setPaymentDetails(data.data?.data?.payment);
+        setPaymentStep('processing');
+        toast.success('Payment submitted. Awaiting admin approval.');
+      },
+      onError: (error) => {
+        toast.error(error.response?.data?.message || 'Failed to submit payment');
+        setPaymentStep('payment');
+      },
+    }
+  );
+
+  const handlePayment = (enrollmentId, paymentMethod, proof) => {
+    if (paymentMethod === 'upi' && !window.Razorpay) {
+      setPaymentStep('processing');
+      manualMutation.mutate({ enrollmentId, proof });
+      return;
+    }
     setPaymentStep('processing');
     createOrderMutation.mutate(enrollmentId);
   };
