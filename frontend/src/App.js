@@ -87,6 +87,7 @@ function App() {
             <Route path="payments" element={<PaymentHistory />} />
             <Route path="content" element={<ContentManager />} />
             <Route path="user-ids" element={<UserIdManager />} />
+            <Route path="tasks" element={<TasksManager />} />
           </Route>
 
           {/* Catch all route */}
