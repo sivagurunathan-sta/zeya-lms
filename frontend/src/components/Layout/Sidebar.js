@@ -28,6 +28,7 @@ const Sidebar = () => {
 
   const adminMenuItems = [
     { icon: Home, label: 'Dashboard', path: '/admin' },
+    { icon: Users, label: 'User IDs', path: '/admin/user-ids' },
     { icon: BookOpen, label: 'Manage Internships', path: '/admin/internships' },
     { icon: Users, label: 'Manage Students', path: '/admin/students' },
     { icon: FileText, label: 'Review Submissions', path: '/admin/submissions' },
