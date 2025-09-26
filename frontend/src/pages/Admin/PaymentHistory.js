@@ -24,7 +24,7 @@ const PaymentHistory = () => {
 
   const debouncedSearch = useDebounce(searchTerm, 500);
 
-  const { data: paymentsData, isLoading } = useQuery(
+  const { data: paymentsData, isLoading, refetch } = useQuery(
     ['admin-payments', currentPage, debouncedSearch, statusFilter, typeFilter],
     () => adminAPI.getPayments({
       page: currentPage,
