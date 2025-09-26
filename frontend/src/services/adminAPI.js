@@ -17,7 +17,15 @@ export const adminAPI = {
   updateInternship: (internshipId, data) => api.put(`/internships/${internshipId}`, data),
 
   // Payments
-  getPayments: (params = {}) => api.get('/payments/admin', { params }),
+  getPayments: (params = {}) => api.get('/admin/payments', { params }),
+  approvePayment: (paymentId) => api.put(`/admin/payments/${paymentId}/approve`),
+
+  // Users (IDs)
+  listUsers: () => api.get('/admin/users'),
+  createUser: (data) => api.post('/admin/create-user', data),
+
+  // Tasks
+  upsertTask: (data) => api.post('/admin/tasks', data),
 
   // Submissions review
   getSubmissions: (params = {}) => api.get('/tasks/admin/pending', { params }),
