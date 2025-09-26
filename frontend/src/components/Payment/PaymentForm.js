@@ -30,7 +30,7 @@ const PaymentForm = ({ enrollment, onPayment, loading }) => {
   ];
 
   const handlePayment = () => {
-    onPayment(enrollment.id, selectedMethod);
+    onPayment(enrollment.id, selectedMethod, proof);
   };
 
   return (
