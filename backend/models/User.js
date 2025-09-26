@@ -70,6 +70,11 @@ const userSchema = new mongoose.Schema({
     enum: ['active', 'inactive', 'suspended'],
     default: 'active'
   },
+  // Approval & chat flags
+  isApproved: { type: Boolean, default: false },
+  chatEnabled: { type: Boolean, default: false },
+  // Prevent interns from editing their own immutable details
+  lockProfile: { type: Boolean, default: true },
   // Internship-specific fields
   internshipProgress: {
     currentDay: {
