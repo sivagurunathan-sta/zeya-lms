@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { CreditCard, Smartphone, Building } from 'lucide-react';
 import Button from '../UI/Button';
 import Card from '../UI/Card';
+import { UPI_QR_URL } from '../../utils/constants';
 
 const PaymentForm = ({ enrollment, onPayment, loading }) => {
   const [selectedMethod, setSelectedMethod] = useState('upi');
