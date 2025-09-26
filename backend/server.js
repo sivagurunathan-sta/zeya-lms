@@ -569,6 +569,17 @@ app.get('/auth/me', authenticateToken, (req, res) => {
 
 // ==================== ADMIN ROUTES ====================
 
+// List Users (Admin Only)
+app.get('/admin/users', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const users = await User.find({}, 'userId name email role isActive createdAt').sort({ createdAt: -1 });
+    res.json({ success: true, data: { users } });
+  } catch (error) {
+    console.error('List users error:', error);
+    res.status(500).json({ success: false, message: 'Failed to list users' });
+  }
+});
+
 // Create User Account (Admin Only)
 app.post('/admin/create-user', authenticateToken, requireAdmin, async (req, res) => {
   try {
@@ -1576,6 +1587,118 @@ app.post('/intern/purchase-paid-task/:taskId', authenticateToken, async (req, re
       success: false,
       message: 'Failed to purchase paid task'
     });
+  }
+});
+
+// ==================== PAYMENTS (ADMIN + MANUAL UPI) ====================
+
+// Create manual UPI payment (Student)
+app.post('/payments/manual', authenticateToken, upload.single('proof'), async (req, res) => {
+  try {
+    const { type = 'certificate', itemId, amount = 499 } = req.body;
+    if (!itemId) {
+      return res.status(400).json({ success: false, message: 'itemId is required' });
+    }
+
+    const payment = new Payment({
+      userId: req.user._id,
+      type,
+      itemId,
+      amount: Number(amount),
+      paymentMethod: 'upi_manual',
+      status: 'pending',
+      proofUrl: req.file ? `/uploads/${req.file.filename}` : undefined,
+      transactionId: 'UPI_' + Date.now()
+    });
+
+    await payment.save();
+
+    await createNotification(
+      req.user._id,
+      'admin_announcement',
+      'Payment Submitted for Approval',
+      'Your UPI payment proof has been submitted. Admin will review and approve shortly.',
+      { paymentId: payment.paymentId, amount: payment.amount },
+      'medium'
+    );
+
+    res.status(201).json({ success: true, data: { payment } });
+  } catch (error) {
+    console.error('Manual payment error:', error);
+    res.status(500).json({ success: false, message: 'Failed to submit manual payment' });
+  }
+});
+
+// Admin: list payments
+app.get('/admin/payments', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const payments = await Payment.find({}).sort({ createdAt: -1 }).populate('userId', 'name email userId');
+    res.json({ success: true, data: { payments } });
+  } catch (error) {
+    console.error('List payments error:', error);
+    res.status(500).json({ success: false, message: 'Failed to list payments' });
+  }
+});
+
+// Admin: approve payment
+app.put('/admin/payments/:paymentId/approve', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { paymentId } = req.params;
+    const payment = await Payment.findOne({ paymentId });
+    if (!payment) {
+      return res.status(404).json({ success: false, message: 'Payment not found' });
+    }
+    payment.status = 'completed';
+    payment.paidAt = new Date();
+    await payment.save();
+
+    if (payment.type === 'certificate') {
+      const progress = await InternProgress.findById(payment.itemId);
+      if (progress) {
+        const certificateId = generateCertificateId();
+        progress.certificateInfo.isPurchased = true;
+        progress.certificateInfo.purchaseDate = new Date();
+        progress.certificateInfo.paymentId = payment.paymentId;
+        progress.certificateInfo.certificateId = certificateId;
+        progress.certificateInfo.certificateUrl = `/certificates/${progress._id}`;
+        progress.paidTasksAccess.hasAccess = true;
+        await progress.save();
+      }
+    }
+
+    await createNotification(
+      payment.userId,
+      payment.type === 'certificate' ? 'certificate_purchased' : 'paid_task_available',
+      'Payment Approved',
+      'Your payment has been approved by admin.',
+      { paymentId: payment.paymentId },
+      'high'
+    );
+
+    res.json({ success: true, data: { payment } });
+  } catch (error) {
+    console.error('Approve payment error:', error);
+    res.status(500).json({ success: false, message: 'Failed to approve payment' });
+  }
+});
+
+// Admin: upload certificate file for an intern progress
+app.post('/admin/certificates/:progressId/upload', authenticateToken, requireAdmin, upload.single('certificate'), async (req, res) => {
+  try {
+    const { progressId } = req.params;
+    const progress = await InternProgress.findById(progressId);
+    if (!progress) return res.status(404).json({ success: false, message: 'Progress not found' });
+
+    const url = req.file ? `/uploads/${req.file.filename}` : null;
+    if (!url) return res.status(400).json({ success: false, message: 'File is required' });
+
+    progress.certificateInfo.certificateUrl = url;
+    await progress.save();
+
+    res.json({ success: true, data: { certificateUrl: url } });
+  } catch (error) {
+    console.error('Upload certificate error:', error);
+    res.status(500).json({ success: false, message: 'Failed to upload certificate' });
   }
 });
 
