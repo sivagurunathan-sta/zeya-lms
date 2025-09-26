@@ -5,6 +5,7 @@ import Card from '../UI/Card';
 
 const PaymentForm = ({ enrollment, onPayment, loading }) => {
   const [selectedMethod, setSelectedMethod] = useState('upi');
+  const [proof, setProof] = useState(null);
 
   const paymentMethods = [
     {
