@@ -25,6 +25,7 @@ import ReviewSubmissions from './pages/Admin/ReviewSubmissions';
 import Analytics from './pages/Admin/Analytics';
 import PaymentHistory from './pages/Admin/PaymentHistory';
 import ContentManager from './pages/Admin/ContentManager';
+import UserIdManager from './pages/Admin/UserIdManager';
 
 // Shared Pages
 import NotFound from './pages/NotFound';
