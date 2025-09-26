@@ -122,7 +122,7 @@ const PaymentForm = ({ enrollment, onPayment, loading }) => {
           {selectedMethod === 'upi' && !process.env.REACT_APP_RAZORPAY_KEY_ID && (
             <div className="mb-6">
               <div className="bg-gray-50 rounded-lg p-4 text-center">
-                <img src={require('../../utils/constants').UPI_QR_URL} alt="UPI QR" className="w-56 h-56 object-contain mx-auto rounded" />
+                <img src={UPI_QR_URL} alt="UPI QR" className="w-56 h-56 object-contain mx-auto rounded" />
                 <p className="text-sm text-gray-600 mt-3">Scan to pay via any UPI app, then upload screenshot</p>
                 <input
                   type="file"
