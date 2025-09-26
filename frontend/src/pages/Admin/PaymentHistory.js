@@ -61,7 +61,24 @@ const PaymentHistory = () => {
     return <LoadingSpinner />;
   }
 
-  const { payments = [], pagination = {} } = paymentsData || {};
+  const approve = async (paymentId) => {
+    await adminAPI.approvePayment(paymentId);
+    refetch();
+  };
+
+  const raw = paymentsData?.data?.data?.payments || paymentsData?.payments || [];
+  const payments = raw.map(p => ({
+    id: p.paymentId || p.id,
+    user: p.userId || p.user,
+    type: (p.type || '').toUpperCase(),
+    amount: p.amount,
+    currency: p.currency || 'INR',
+    status: (p.status || '').toUpperCase(),
+    createdAt: p.createdAt,
+    razorpayPaymentId: p.transactionId,
+    proofUrl: p.proofUrl
+  }));
+  const pagination = paymentsData?.pagination || { totalPages: 1, total: payments.length };
 
   return (
     <div className="space-y-6">
