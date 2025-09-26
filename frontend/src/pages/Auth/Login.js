@@ -114,10 +114,10 @@ const Login = () => {
         </Button>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Button type="button" variant="secondary" onClick={() => { setValue('email','admin@example.com'); setValue('password','admin123'); }}>
+          <Button type="button" variant="secondary" onClick={() => { setValue('userId','admin@studentlms.com'); setValue('password','admin123'); }}>
             Use Admin Demo Credentials
           </Button>
-          <Button type="button" variant="secondary" onClick={() => { setValue('email','student@example.com'); setValue('password','student123'); }}>
+          <Button type="button" variant="secondary" onClick={() => { setValue('userId','student@example.com'); setValue('password','student123'); }}>
             Use Student Demo Credentials
           </Button>
           <Button type="button" onClick={() => { dispatch(demoLoginAdmin()); navigate('/admin', { replace: true }); }}>
