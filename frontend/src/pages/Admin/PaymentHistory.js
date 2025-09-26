@@ -239,9 +239,14 @@ const PaymentHistory = () => {
                   
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end space-x-2">
-                      <Button size="sm" variant="outline">
-                        View
-                      </Button>
+                      {payment.proofUrl && (
+                        <a href={payment.proofUrl} target="_blank" rel="noreferrer">
+                          <Button size="sm" variant="outline">View Proof</Button>
+                        </a>
+                      )}
+                      {payment.status === 'PENDING' && (
+                        <Button size="sm" onClick={() => approve(payment.id)}>Approve</Button>
+                      )}
                       {payment.status === 'COMPLETED' && (
                         <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50">
                           Refund
