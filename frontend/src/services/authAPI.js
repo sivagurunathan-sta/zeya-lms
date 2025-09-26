@@ -1,7 +1,11 @@
 import api from './api';
 
 export const login = (credentials) => {
-  return api.post('/auth/login', credentials).then((res) => ({ data: res.data.data }));
+  const payload = {
+    userId: credentials.userId || credentials.email,
+    password: credentials.password,
+  };
+  return api.post('/auth/login', payload).then((res) => ({ data: res.data.data }));
 };
 
 export const register = (userData) => {
