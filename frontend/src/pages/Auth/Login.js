@@ -52,17 +52,13 @@ const Login = () => {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <Input
-          label="Email address"
-          type="email"
-          {...register('email', {
-            required: 'Email is required',
-            pattern: {
-              value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-              message: 'Invalid email address'
-            }
+          label="User ID or Email"
+          type="text"
+          {...register('userId', {
+            required: 'User ID or Email is required'
           })}
-          error={errors.email?.message}
-          placeholder="Enter your email"
+          error={errors.userId?.message}
+          placeholder="Enter your User ID or Email"
         />
 
         <div className="relative">
