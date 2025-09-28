@@ -1,0 +1,197 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  INTERN
+}
+
+enum SubmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PaymentStatus {
+  PENDING
+  VERIFIED
+  FAILED
+}
+
+enum PaymentType {
+  CERTIFICATE
+  PAID_TASK
+}
+
+enum NotificationType {
+  INFO
+  WARNING
+  SUCCESS
+  ERROR
+}
+
+model User {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String   @unique @map("user_id") 
+  name          String
+  email         String   @unique
+  role          Role     @default(INTERN)
+  passwordHash  String   @map("password_hash")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  enrollments      Enrollment[]
+  submissions      Submission[]
+  payments         Payment[]
+  notifications    Notification[]
+  verifiedPayments Payment[] @relation("PaymentVerifier")
+
+  @@map("users")
+}
+
+model Internship {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  title           String
+  description     String
+  coverImage      String?  @map("cover_image")
+  durationDays    Int      @default(35) @map("duration_days")
+  passPercentage  Float    @default(75.0) @map("pass_percentage")
+  certificatePrice Int     @default(499) @map("certificate_price")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  tasks       Task[]
+  enrollments Enrollment[]
+  payments    Payment[]
+
+  @@map("internships")
+}
+
+model Task {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  internshipId String   @map("internship_id") @db.ObjectId
+  taskNumber   Int      @map("task_number")
+  title        String
+  description  String
+  videoUrl     String?  @map("video_url")
+  files        Json?    
+  isRequired   Boolean  @default(true) @map("is_required")
+  points       Int      @default(100)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  internship  Internship   @relation(fields: [internshipId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+
+  @@map("tasks")
+}
+
+model Enrollment {
+  id                   String    @id @default(auto()) @map("_id") @db.ObjectId
+  internId            String    @map("intern_id") @db.ObjectId
+  internshipId        String    @map("internship_id") @db.ObjectId
+  enrollmentDate      DateTime  @default(now()) @map("enrollment_date")
+  completionDate      DateTime? @map("completion_date")
+  finalScore          Float?    @map("final_score")
+  isCompleted         Boolean   @default(false) @map("is_completed")
+  certificateEligible Boolean   @default(false) @map("certificate_eligible")
+  certificatePurchased Boolean  @default(false) @map("certificate_purchased")
+  certificateUrl      String?   @map("certificate_url")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  intern      User         @relation(fields: [internId], references: [id], onDelete: Cascade)
+  internship  Internship   @relation(fields: [internshipId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+
+  @@map("enrollments")
+}
+
+model Submission {
+  id             String           @id @default(auto()) @map("_id") @db.ObjectId
+  enrollmentId   String           @map("enrollment_id") @db.ObjectId
+  taskId         String           @map("task_id") @db.ObjectId
+  internId       String           @map("intern_id") @db.ObjectId
+  githubRepoUrl  String           @map("github_repo_url")
+  submissionDate DateTime         @default(now()) @map("submission_date")
+  isLate         Boolean          @default(false) @map("is_late")
+  score          Float?
+  adminFeedback  String?          @map("admin_feedback")
+  status         SubmissionStatus @default(PENDING)
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  task       Task       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  intern     User       @relation(fields: [internId], references: [id], onDelete: Cascade)
+
+  @@map("submissions")
+}
+
+model Payment {
+  id            String        @id @default(auto()) @map("_id") @db.ObjectId
+  internId      String        @map("intern_id") @db.ObjectId
+  internshipId  String?       @map("internship_id") @db.ObjectId
+  paidTaskId    String?       @map("paid_task_id") @db.ObjectId
+  amount        Int
+  paymentType   PaymentType   @map("payment_type")
+  qrCodeUrl     String        @map("qr_code_url")
+  paymentStatus PaymentStatus @default(PENDING) @map("payment_status")
+  transactionId String?       @map("transaction_id")
+  verifiedBy    String?       @map("verified_by") @db.ObjectId
+  verifiedAt    DateTime?     @map("verified_at")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  intern     User        @relation(fields: [internId], references: [id], onDelete: Cascade)
+  internship Internship? @relation(fields: [internshipId], references: [id])
+  paidTask   PaidTask?   @relation(fields: [paidTaskId], references: [id])
+  verifier   User?       @relation("PaymentVerifier", fields: [verifiedBy], references: [id])
+
+  @@map("payments")
+}
+
+model PaidTask {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  description String
+  price       Int      @default(1000)
+  files       Json?    
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  payments Payment[]
+
+  @@map("paid_tasks")
+}
+
+model Notification {
+  id        String           @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String           @map("user_id") @db.ObjectId
+  title     String
+  message   String
+  type      NotificationType @default(INFO)
+  isRead    Boolean          @default(false) @map("is_read")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
