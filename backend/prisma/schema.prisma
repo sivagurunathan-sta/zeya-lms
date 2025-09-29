@@ -101,6 +101,7 @@ model User {
   certificateValidations CertificateValidation[]
   reviewedValidations   CertificateValidation[] @relation("ValidationReviewer")
   createdChatRooms      ChatRoom[]
+  auditLogs             AuditLog[]
 
   @@map("users")
 }
@@ -484,8 +485,6 @@ model PrivateTaskSubmission {
 
   @@map("private_task_submissions")
 }
-
-// Add AuditLog model at the end before closing
 
 model AuditLog {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
