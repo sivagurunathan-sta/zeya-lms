@@ -1,148 +1,122 @@
-// routes/admin.js
+// routes/admin.js - ENHANCED VERSION
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const { adminOnly } = require('../middleware/auth');
 const { generateCertificate, generatePaymentQR } = require('../utils/helpers');
+const multer = require('multer');
+const path = require('path');
 
 const router = express.Router();
 const prisma = new PrismaClient();
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|pdf|doc|docx|zip/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Invalid file type'));
+    }
+  }
+});
 
 // Apply admin-only middleware to all routes
 router.use(adminOnly);
 
 // ==========================
-// DASHBOARD & ANALYTICS
+// ENHANCED USER MANAGEMENT
 // ==========================
 
-router.get('/dashboard', async (req, res) => {
+// Bulk add users
+router.post('/users/bulk-add', async (req, res) => {
   try {
-    // Get dashboard statistics
-    const [
-      totalInterns,
-      activeInternships,
-      totalEnrollments,
-      completedInternships,
-      pendingSubmissions,
-      totalRevenue
-    ] = await Promise.all([
-      prisma.user.count({ where: { role: 'INTERN' } }),
-      prisma.internship.count({ where: { isActive: true } }),
-      prisma.enrollment.count(),
-      prisma.enrollment.count({ where: { isCompleted: true } }),
-      prisma.submission.count({ where: { status: 'PENDING' } }),
-      prisma.payment.aggregate({
-        where: { paymentStatus: 'VERIFIED' },
-        _sum: { amount: true }
-      })
-    ]);
+    const { users } = req.body; // Array of {name, email, userId}
+    
+    if (!Array.isArray(users) || users.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Users array is required'
+      });
+    }
 
-    // Recent activities
-    const recentSubmissions = await prisma.submission.findMany({
-      take: 10,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        intern: { select: { name: true, userId: true } },
-        task: { select: { title: true, taskNumber: true } }
-      }
-    });
+    const results = [];
+    const errors = [];
 
-    // Monthly enrollment stats
-    const monthlyStats = await prisma.enrollment.groupBy({
-      by: ['createdAt'],
-      _count: { id: true },
-      where: {
-        createdAt: {
-          gte: new Date(new Date().setMonth(new Date().getMonth() - 6))
-        }
-      }
-    });
-
-    res.json({
-      success: true,
-      data: {
-        stats: {
-          totalInterns,
-          activeInternships,
-          totalEnrollments,
-          completedInternships,
-          pendingSubmissions,
-          totalRevenue: totalRevenue._sum.amount || 0
-        },
-        recentSubmissions,
-        monthlyStats
-      }
-    });
-
-  } catch (error) {
-    console.error('Dashboard error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
-});
-
-// ==========================
-// INTERN MANAGEMENT
-// ==========================
-
-router.get('/interns', async (req, res) => {
-  try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-    const search = req.query.search || '';
-    const skip = (page - 1) * limit;
-
-    const where = {
-      role: 'INTERN',
-      ...(search && {
-        OR: [
-          { name: { contains: search, mode: 'insensitive' } },
-          { email: { contains: search, mode: 'insensitive' } },
-          { userId: { contains: search, mode: 'insensitive' } }
-        ]
-      })
-    };
-
-    const [interns, total] = await Promise.all([
-      prisma.user.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          userId: true,
-          name: true,
-          email: true,
-          isActive: true,
-          createdAt: true,
-          _count: {
-            select: {
-              enrollments: true,
-              submissions: true
-            }
+    for (const userData of users) {
+      try {
+        const { name, email, userId } = userData;
+        
+        // Check if user already exists
+        const existingUser = await prisma.user.findFirst({
+          where: {
+            OR: [{ email }, { userId }]
           }
-        }
-      }),
-      prisma.user.count({ where })
-    ]);
+        });
 
-    res.json({
-      success: true,
-      data: {
-        interns,
-        pagination: {
-          page,
-          limit,
-          total,
-          pages: Math.ceil(total / limit)
+        if (existingUser) {
+          errors.push({ userData, error: 'User already exists' });
+          continue;
         }
+
+        // Generate temporary password (userId in lowercase)
+        const tempPassword = userId.toLowerCase();
+        const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+        const newUser = await prisma.user.create({
+          data: {
+            userId,
+            name,
+            email,
+            role: 'INTERN',
+            passwordHash: hashedPassword,
+            isActive: true
+          }
+        });
+
+        results.push({
+          user: newUser,
+          temporaryPassword: tempPassword
+        });
+
+        // Create welcome notification
+        await prisma.notification.create({
+          data: {
+            userId: newUser.id,
+            title: 'Welcome to LMS',
+            message: `Your account has been created. Login with ID: ${userId} and password: ${tempPassword}`,
+            type: 'INFO'
+          }
+        });
+
+      } catch (error) {
+        errors.push({ userData, error: error.message });
       }
+    }
+
+    res.status(201).json({
+      success: true,
+      message: `Created ${results.length} users successfully`,
+      data: { results, errors }
     });
 
   } catch (error) {
-    console.error('Get interns error:', error);
+    console.error('Bulk add users error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -150,87 +124,115 @@ router.get('/interns', async (req, res) => {
   }
 });
 
-router.get('/interns/:id', async (req, res) => {
+// Get user full profile
+router.get('/users/:id/profile', async (req, res) => {
   try {
     const { id } = req.params;
 
-    const intern = await prisma.user.findUnique({
-      where: { id, role: 'INTERN' },
+    const user = await prisma.user.findUnique({
+      where: { id },
       include: {
         enrollments: {
           include: {
-            internship: { select: { title: true, durationDays: true } },
+            internship: {
+              select: {
+                id: true,
+                title: true,
+                description: true,
+                coverImage: true,
+                durationDays: true,
+                certificatePrice: true
+              }
+            },
             submissions: {
               include: {
-                task: { select: { title: true, taskNumber: true } }
-              }
+                task: {
+                  select: {
+                    id: true,
+                    taskNumber: true,
+                    title: true,
+                    points: true
+                  }
+                }
+              },
+              orderBy: { createdAt: 'desc' }
             }
           }
         },
         payments: {
           include: {
             internship: { select: { title: true } },
-            paidTask: { select: { title: true } }
-          }
+            paidTask: { select: { title: true } },
+            verifier: { select: { name: true } }
+          },
+          orderBy: { createdAt: 'desc' }
         },
         notifications: {
           orderBy: { createdAt: 'desc' },
-          take: 10
+          take: 20
         }
       }
     });
 
-    if (!intern) {
+    if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'Intern not found'
+        message: 'User not found'
       });
     }
 
-    res.json({
-      success: true,
-      data: { intern }
+    // Calculate additional metrics
+    const completedCourses = user.enrollments.filter(e => e.isCompleted).length;
+    const certificates = user.enrollments.filter(e => e.certificatePurchased).length;
+    const totalPayments = user.payments.reduce((sum, p) => p.paymentStatus === 'VERIFIED' ? sum + p.amount : sum, 0);
+    
+    // Task statistics
+    const taskStats = {
+      completed: 0,
+      pending: 0,
+      rejected: 0,
+      total: 0
+    };
+
+    user.enrollments.forEach(enrollment => {
+      enrollment.submissions.forEach(submission => {
+        taskStats.total++;
+        if (submission.status === 'APPROVED') taskStats.completed++;
+        else if (submission.status === 'REJECTED') taskStats.rejected++;
+        else taskStats.pending++;
+      });
     });
 
-  } catch (error) {
-    console.error('Get intern error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
-});
-
-router.put('/interns/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { name, email, isActive } = req.body;
-
-    const updatedIntern = await prisma.user.update({
-      where: { id, role: 'INTERN' },
-      data: {
-        ...(name && { name }),
-        ...(email && { email }),
-        ...(typeof isActive === 'boolean' && { isActive })
+    const profileData = {
+      user: {
+        id: user.id,
+        userId: user.userId,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
       },
-      select: {
-        id: true,
-        userId: true,
-        name: true,
-        email: true,
-        isActive: true,
-        updatedAt: true
+      enrollments: user.enrollments,
+      payments: user.payments,
+      notifications: user.notifications,
+      statistics: {
+        totalEnrollments: user.enrollments.length,
+        completedCourses,
+        certificates,
+        totalPayments,
+        taskStats
       }
-    });
+    };
 
     res.json({
       success: true,
-      message: 'Intern updated successfully',
-      data: { intern: updatedIntern }
+      data: profileData
     });
 
   } catch (error) {
-    console.error('Update intern error:', error);
+    console.error('Get user profile error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -238,161 +240,142 @@ router.put('/interns/:id', async (req, res) => {
   }
 });
 
-router.delete('/interns/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    await prisma.user.delete({
-      where: { id, role: 'INTERN' }
-    });
-
-    res.json({
-      success: true,
-      message: 'Intern deleted successfully'
-    });
-
-  } catch (error) {
-    console.error('Delete intern error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
-});
-
-// ==========================
-// INTERNSHIP MANAGEMENT
-// ==========================
-
-router.post('/internships', async (req, res) => {
-  try {
-    const {
-      title,
-      description,
-      coverImage,
-      durationDays = 35,
-      passPercentage = 75.0,
-      certificatePrice = 499
-    } = req.body;
-
-    if (!title || !description) {
-      return res.status(400).json({
-        success: false,
-        message: 'Title and description are required'
-      });
-    }
-
-    const internship = await prisma.internship.create({
-      data: {
-        title,
-        description,
-        coverImage,
-        durationDays,
-        passPercentage,
-        certificatePrice
-      }
-    });
-
-    res.status(201).json({
-      success: true,
-      message: 'Internship created successfully',
-      data: { internship }
-    });
-
-  } catch (error) {
-    console.error('Create internship error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
-});
-
-router.get('/internships', async (req, res) => {
-  try {
-    const internships = await prisma.internship.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: {
-        _count: {
-          select: {
-            tasks: true,
-            enrollments: true
-          }
-        }
-      }
-    });
-
-    res.json({
-      success: true,
-      data: { internships }
-    });
-
-  } catch (error) {
-    console.error('Get internships error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
-});
-
-router.get('/internships/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const internship = await prisma.internship.findUnique({
-      where: { id },
-      include: {
-        tasks: {
-          orderBy: { taskNumber: 'asc' }
-        },
-        enrollments: {
-          include: {
-            intern: { select: { name: true, userId: true } }
-          }
-        }
-      }
-    });
-
-    if (!internship) {
-      return res.status(404).json({
-        success: false,
-        message: 'Internship not found'
-      });
-    }
-
-    res.json({
-      success: true,
-      data: { internship }
-    });
-
-  } catch (error) {
-    console.error('Get internship error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
-});
-
-router.put('/internships/:id', async (req, res) => {
+// Edit user details
+router.put('/users/:id/edit', async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
 
-    const internship = await prisma.internship.update({
+    // Remove sensitive fields that shouldn't be updated via this route
+    delete updateData.passwordHash;
+    delete updateData.id;
+    delete updateData.createdAt;
+
+    const updatedUser = await prisma.user.update({
       where: { id },
-      data: updateData
+      data: {
+        ...updateData,
+        updatedAt: new Date()
+      }
+    });
+
+    // Log admin action
+    await prisma.notification.create({
+      data: {
+        userId: id,
+        title: 'Profile Updated',
+        message: `Your profile has been updated by admin`,
+        type: 'INFO'
+      }
     });
 
     res.json({
       success: true,
-      message: 'Internship updated successfully',
-      data: { internship }
+      message: 'User updated successfully',
+      data: { user: updatedUser }
     });
 
   } catch (error) {
-    console.error('Update internship error:', error);
+    console.error('Edit user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+// Revoke user access
+router.put('/users/:id/revoke', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: {
+        isActive: false,
+        updatedAt: new Date()
+      }
+    });
+
+    // Send notification to user
+    await prisma.notification.create({
+      data: {
+        userId: id,
+        title: 'Access Revoked',
+        message: reason || 'Your access has been revoked by admin',
+        type: 'ERROR'
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'User access revoked successfully',
+      data: { user }
+    });
+
+  } catch (error) {
+    console.error('Revoke user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+// Enable chat for user (after certificate verification)
+router.put('/users/:id/enable-chat', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if user has valid certificates
+    const certificates = await prisma.enrollment.count({
+      where: {
+        internId: id,
+        certificatePurchased: true
+      }
+    });
+
+    if (certificates === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'User must have at least one certificate to enable chat'
+      });
+    }
+
+    // Create or update chat permission
+    await prisma.chatPermission.upsert({
+      where: { userId: id },
+      update: {
+        isEnabled: true,
+        enabledAt: new Date(),
+        enabledBy: req.user.id
+      },
+      create: {
+        userId: id,
+        isEnabled: true,
+        enabledAt: new Date(),
+        enabledBy: req.user.id
+      }
+    });
+
+    // Notify user
+    await prisma.notification.create({
+      data: {
+        userId: id,
+        title: 'Chat Access Enabled',
+        message: 'You now have access to private chat with admin for premium tasks',
+        type: 'SUCCESS'
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Chat access enabled for user'
+    });
+
+  } catch (error) {
+    console.error('Enable chat error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -401,10 +384,14 @@ router.put('/internships/:id', async (req, res) => {
 });
 
 // ==========================
-// TASK MANAGEMENT
+// ENHANCED TASK MANAGEMENT
 // ==========================
 
-router.post('/internships/:internshipId/tasks', async (req, res) => {
+// Create task with enhanced features
+router.post('/internships/:internshipId/tasks/enhanced', upload.fields([
+  { name: 'files', maxCount: 10 },
+  { name: 'videos', maxCount: 5 }
+]), async (req, res) => {
   try {
     const { internshipId } = req.params;
     const {
@@ -412,86 +399,48 @@ router.post('/internships/:internshipId/tasks', async (req, res) => {
       title,
       description,
       videoUrl,
-      files,
       isRequired = true,
-      points = 100
+      points = 100,
+      waitTimeHours = 12,
+      maxAttempts = 3
     } = req.body;
 
-    if (!taskNumber || !title || !description) {
-      return res.status(400).json({
-        success: false,
-        message: 'Task number, title, and description are required'
+    // Process uploaded files
+    const files = [];
+    if (req.files?.files) {
+      req.files.files.forEach(file => {
+        files.push({
+          name: file.originalname,
+          url: `/uploads/${file.filename}`,
+          type: path.extname(file.originalname).substring(1),
+          size: file.size
+        });
       });
     }
 
     const task = await prisma.task.create({
       data: {
         internshipId,
-        taskNumber,
+        taskNumber: parseInt(taskNumber),
         title,
         description,
         videoUrl,
-        files,
+        files: files.length > 0 ? files : null,
         isRequired,
-        points
+        points: parseInt(points),
+        waitTimeHours: parseInt(waitTimeHours),
+        maxAttempts: parseInt(maxAttempts)
       }
     });
 
     res.status(201).json({
       success: true,
-      message: 'Task created successfully',
+      message: 'Enhanced task created successfully',
       data: { task }
     });
 
   } catch (error) {
-    console.error('Create task error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
-});
-
-router.put('/tasks/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const updateData = req.body;
-
-    const task = await prisma.task.update({
-      where: { id },
-      data: updateData
-    });
-
-    res.json({
-      success: true,
-      message: 'Task updated successfully',
-      data: { task }
-    });
-
-  } catch (error) {
-    console.error('Update task error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
-});
-
-router.delete('/tasks/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    await prisma.task.delete({
-      where: { id }
-    });
-
-    res.json({
-      success: true,
-      message: 'Task deleted successfully'
-    });
-
-  } catch (error) {
-    console.error('Delete task error:', error);
+    console.error('Create enhanced task error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -500,32 +449,55 @@ router.delete('/tasks/:id', async (req, res) => {
 });
 
 // ==========================
-// SUBMISSION MANAGEMENT
+// SUBMISSION REVIEW SYSTEM
 // ==========================
 
-router.get('/submissions', async (req, res) => {
+// Get all submissions with filtering
+router.get('/submissions/review', async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-    const status = req.query.status;
-    const skip = (page - 1) * limit;
+    const { status, internshipId, page = 1, limit = 20 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    const where = {
-      ...(status && { status })
-    };
+    const where = {};
+    if (status) where.status = status;
+    if (internshipId) {
+      where.task = {
+        internshipId: internshipId
+      };
+    }
 
     const [submissions, total] = await Promise.all([
       prisma.submission.findMany({
         where,
         skip,
-        take: limit,
+        take: parseInt(limit),
         orderBy: { createdAt: 'desc' },
         include: {
-          intern: { select: { name: true, userId: true } },
-          task: { select: { title: true, taskNumber: true } },
+          intern: { 
+            select: { 
+              id: true, 
+              name: true, 
+              userId: true, 
+              email: true 
+            } 
+          },
+          task: { 
+            select: { 
+              id: true,
+              title: true, 
+              taskNumber: true,
+              points: true,
+              waitTimeHours: true
+            } 
+          },
           enrollment: {
             include: {
-              internship: { select: { title: true } }
+              internship: { 
+                select: { 
+                  id: true,
+                  title: true 
+                } 
+              }
             }
           }
         }
@@ -538,16 +510,16 @@ router.get('/submissions', async (req, res) => {
       data: {
         submissions,
         pagination: {
-          page,
-          limit,
+          page: parseInt(page),
+          limit: parseInt(limit),
           total,
-          pages: Math.ceil(total / limit)
+          pages: Math.ceil(total / parseInt(limit))
         }
       }
     });
 
   } catch (error) {
-    console.error('Get submissions error:', error);
+    console.error('Get submissions for review error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -555,143 +527,153 @@ router.get('/submissions', async (req, res) => {
   }
 });
 
-router.put('/submissions/:id/evaluate', async (req, res) => {
+// Review submission with enhanced features
+router.put('/submissions/:id/review', async (req, res) => {
   try {
     const { id } = req.params;
-    const { score, adminFeedback, status } = req.body;
+    const { status, score, adminFeedback, allowResubmission = true } = req.body;
 
-    const submission = await prisma.submission.update({
+    if (!['APPROVED', 'REJECTED'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Status must be either APPROVED or REJECTED'
+      });
+    }
+
+    const submission = await prisma.submission.findUnique({
       where: { id },
-      data: {
-        score,
-        adminFeedback,
-        status
-      },
       include: {
-        intern: { select: { name: true, userId: true } },
-        task: { select: { title: true } }
-      }
-    });
-
-    // Create notification for intern
-    await prisma.notification.create({
-      data: {
-        userId: submission.internId,
-        title: 'Submission Evaluated',
-        message: `Your submission for "${submission.task.title}" has been ${status.toLowerCase()}`,
-        type: status === 'APPROVED' ? 'SUCCESS' : status === 'REJECTED' ? 'ERROR' : 'INFO'
-      }
-    });
-
-    res.json({
-      success: true,
-      message: 'Submission evaluated successfully',
-      data: { submission }
-    });
-
-  } catch (error) {
-    console.error('Evaluate submission error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
-});
-
-// ==========================
-// PAYMENT MANAGEMENT
-// ==========================
-
-router.get('/payments', async (req, res) => {
-  try {
-    const payments = await prisma.payment.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: {
-        intern: { select: { name: true, userId: true } },
-        internship: { select: { title: true } },
-        paidTask: { select: { title: true } },
-        verifier: { select: { name: true } }
-      }
-    });
-
-    res.json({
-      success: true,
-      data: { payments }
-    });
-
-  } catch (error) {
-    console.error('Get payments error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
-});
-
-router.put('/payments/:id/verify', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status, transactionId } = req.body;
-
-    const payment = await prisma.payment.update({
-      where: { id },
-      data: {
-        paymentStatus: status,
-        transactionId,
-        verifiedBy: req.user.id,
-        verifiedAt: new Date()
-      },
-      include: {
-        intern: { select: { name: true, userId: true } }
-      }
-    });
-
-    // If certificate payment verified, generate certificate
-    if (status === 'VERIFIED' && payment.paymentType === 'CERTIFICATE') {
-      const enrollment = await prisma.enrollment.findFirst({
-        where: {
-          internId: payment.internId,
-          internshipId: payment.internshipId
+        intern: { select: { name: true } },
+        task: { 
+          select: { 
+            title: true, 
+            taskNumber: true,
+            waitTimeHours: true,
+            internshipId: true
+          } 
         },
-        include: {
-          internship: true
+        enrollment: true
+      }
+    });
+
+    if (!submission) {
+      return res.status(404).json({
+        success: false,
+        message: 'Submission not found'
+      });
+    }
+
+    // Update submission
+    const updatedSubmission = await prisma.submission.update({
+      where: { id },
+      data: {
+        status,
+        score: score ? parseFloat(score) : null,
+        adminFeedback,
+        reviewedAt: new Date(),
+        reviewedBy: req.user.id
+      }
+    });
+
+    // If approved, check if next task should be unlocked
+    if (status === 'APPROVED') {
+      const nextTask = await prisma.task.findFirst({
+        where: {
+          internshipId: submission.task.internshipId,
+          taskNumber: submission.task.taskNumber + 1
         }
       });
 
-      if (enrollment) {
-        const certificateUrl = await generateCertificate(
-          payment.intern,
-          enrollment.internship
-        );
-
-        await prisma.enrollment.update({
-          where: { id: enrollment.id },
+      if (nextTask) {
+        // Calculate unlock time (current time + wait time)
+        const unlockTime = new Date(Date.now() + (submission.task.waitTimeHours * 60 * 60 * 1000));
+        
+        // Create task unlock record
+        await prisma.taskUnlock.create({
           data: {
-            certificatePurchased: true,
-            certificateUrl
+            enrollmentId: submission.enrollmentId,
+            taskId: nextTask.id,
+            unlocksAt: unlockTime
+          }
+        });
+
+        // Notify user about next task unlock
+        await prisma.notification.create({
+          data: {
+            userId: submission.internId,
+            title: 'Task Approved - Next Task Unlocking',
+            message: `Your submission for "${submission.task.title}" has been approved! Next task will unlock at ${unlockTime.toLocaleString()}`,
+            type: 'SUCCESS'
+          }
+        });
+      } else {
+        // Check if this was the final task
+        const allTasks = await prisma.task.count({
+          where: { internshipId: submission.task.internshipId }
+        });
+
+        const completedTasks = await prisma.submission.count({
+          where: {
+            enrollmentId: submission.enrollmentId,
+            status: 'APPROVED'
+          }
+        });
+
+        if (completedTasks >= allTasks) {
+          // Mark enrollment as completed and eligible for payment
+          await prisma.enrollment.update({
+            where: { id: submission.enrollmentId },
+            data: {
+              isCompleted: true,
+              completionDate: new Date(),
+              certificateEligible: true
+            }
+          });
+
+          // Notify user about completion
+          await prisma.notification.create({
+            data: {
+              userId: submission.internId,
+              title: 'Internship Completed!',
+              message: 'Congratulations! You have completed all tasks. You can now proceed to payment for your certificate.',
+              type: 'SUCCESS'
+            }
+          });
+        }
+      }
+    } else if (status === 'REJECTED') {
+      // Notify user about rejection
+      await prisma.notification.create({
+        data: {
+          userId: submission.internId,
+          title: 'Submission Rejected',
+          message: `Your submission for "${submission.task.title}" has been rejected. ${adminFeedback || 'Please review and resubmit.'}`,
+          type: 'ERROR'
+        }
+      });
+
+      // If resubmission allowed, create resubmission opportunity
+      if (allowResubmission) {
+        await prisma.resubmissionOpportunity.create({
+          data: {
+            originalSubmissionId: id,
+            enrollmentId: submission.enrollmentId,
+            taskId: submission.taskId,
+            allowedUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+            isUsed: false
           }
         });
       }
     }
 
-    // Create notification
-    await prisma.notification.create({
-      data: {
-        userId: payment.internId,
-        title: 'Payment Verified',
-        message: `Your payment of ₹${payment.amount} has been verified`,
-        type: 'SUCCESS'
-      }
-    });
-
     res.json({
       success: true,
-      message: 'Payment verified successfully',
-      data: { payment }
+      message: 'Submission reviewed successfully',
+      data: { submission: updatedSubmission }
     });
 
   } catch (error) {
-    console.error('Verify payment error:', error);
+    console.error('Review submission error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
