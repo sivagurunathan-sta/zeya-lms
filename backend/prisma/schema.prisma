@@ -484,3 +484,22 @@ model PrivateTaskSubmission {
 
   @@map("private_task_submissions")
 }
+
+// Add AuditLog model at the end before closing
+
+model AuditLog {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  action    String   @map("action")
+  userId    String   @map("user_id") @db.ObjectId
+  details   String?  @map("details")
+  ipAddress String?  @map("ip_address")
+  timestamp DateTime @default(now()) @map("timestamp")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([action])
+  @@index([timestamp])
+  @@map("audit_logs")
+}
