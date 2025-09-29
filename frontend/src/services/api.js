@@ -14,7 +14,7 @@ const RESOLVED_API_BASE_URL = (() => {
 
 if (process.env.NODE_ENV !== 'production' && !process.env.REACT_APP_API_URL) {
   // eslint-disable-next-line no-console
-  console.warn('REACT_APP_API_URL is not set. Falling back to "/api".');
+  console.warn('http://localhost:5000/api');
 }
 
 const api = axios.create({
