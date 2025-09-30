@@ -7,6 +7,7 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
+const adminEnhancedRoutes = require('./src/routes/admin-enhanced');
 require('dotenv').config();
 
 const app = express();
@@ -53,7 +54,7 @@ app.use(morgan('combined'));
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: 'http://localhost:3000', // Your frontend URL
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
@@ -69,6 +70,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // API Routes
 app.use('/api/auth', require('./src/routes/auth'));
 app.use('/api/admin', require('./src/routes/admin'));
+app.use('/api/admin/enhanced', require('./src/routes/admin-enhanced'));
 app.use('/api/intern', require('./src/routes/intern'));
 app.use('/api/payments', require('./src/routes/payments'));
 app.use('/api/certificates', require('./src/routes/certificates'));

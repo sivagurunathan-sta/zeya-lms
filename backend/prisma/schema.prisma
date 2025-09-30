@@ -184,7 +184,7 @@ model Submission {
   enrollmentId   String           @map("enrollment_id") @db.ObjectId
   taskId         String           @map("task_id") @db.ObjectId
   internId       String           @map("intern_id") @db.ObjectId
-  githubRepoUrl  String           @map("github_repo_url")
+
   submissionDate DateTime         @default(now()) @map("submission_date")
   isLate         Boolean          @default(false) @map("is_late")
   score          Float?

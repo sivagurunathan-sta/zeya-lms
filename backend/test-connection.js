@@ -1,25 +1,27 @@
-// test-connection.js
-const { MongoClient } = require('mongodb');
+// backend/test-connection.js
+const { PrismaClient } = require('@prisma/client');
+require('dotenv').config();
 
-const uri = "mongodb+srv://sivagurunathan875_db_user:shDbGcTzGPFwjwsW@cluster0.epgf9z2.mongodb.net/lms_database?retryWrites=true&w=majority&appName=Cluster0";
+const prisma = new PrismaClient();
 
 async function testConnection() {
-  const client = new MongoClient(uri);
+  console.log('Testing MongoDB connection...');
+  console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'Set ✓' : 'Not Set ✗');
   
   try {
-    console.log('🔄 Attempting to connect to MongoDB...');
-    await client.connect();
+    await prisma.$connect();
     console.log('✅ Successfully connected to MongoDB!');
     
-    // Test database access
-    const db = client.db('lms_database');
-    const collections = await db.listCollections().toArray();
-    console.log('📦 Available collections:', collections.length);
+    // Try to count users
+    const userCount = await prisma.user.count();
+    console.log(`📊 Found ${userCount} users in database`);
     
+    await prisma.$disconnect();
+    process.exit(0);
   } catch (error) {
-    console.error('❌ Connection failed:', error.message);
-  } finally {
-    await client.close();
+    console.error('❌ Failed to connect to MongoDB:', error.message);
+    await prisma.$disconnect();
+    process.exit(1);
   }
 }
 

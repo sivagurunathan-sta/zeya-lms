@@ -1,10 +1,8 @@
-// frontend/src/App.js
 import React, { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { Toaster } from 'react-hot-toast';
 
-// Import your React components
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import AdminDashboard from './pages/admin/Dashboard';
@@ -14,8 +12,7 @@ import TaskView from './pages/student/TaskView';
 import NotFound from './pages/NotFound';
 import PrivateRoute from './components/PrivateRoute';
 
-// Import actions
-import { initDemoAuth } from './store/slices/authSlice';
+import { checkAuth } from './store/slices/authSlice';
 
 import './App.css';
 
@@ -24,14 +21,17 @@ function App() {
   const { isAuthenticated, user, loading } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    // Initialize demo authentication or check existing auth
-    dispatch(initDemoAuth());
+    // Check if user is authenticated on app load
+    dispatch(checkAuth());
   }, [dispatch]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
       </div>
     );
   }
