@@ -1,9 +1,172 @@
-// Add to backend/src/routes/intern.js
-const taskUnlockService = require('../services/taskUnlockService');
-const scoreCalculationService = require('../services/scoreCalculationService');
+// src/routes/intern.js
+const express = require('express');
+const router = express.Router();
+const { PrismaClient } = require('@prisma/client');
+const { authenticateToken, authorizeIntern } = require('../middleware/auth');
 
-// Replace the existing enroll route with this enhanced version:
+const prisma = new PrismaClient();
 
+// Apply authentication to all intern routes
+router.use(authenticateToken);
+router.use(authorizeIntern);
+
+// ===========================
+// DASHBOARD
+// ===========================
+
+// Get intern dashboard
+router.get('/dashboard', async (req, res) => {
+  try {
+    const internId = req.user.id;
+
+    const [enrollments, notifications, payments] = await Promise.all([
+      prisma.enrollment.findMany({
+        where: { internId },
+        include: {
+          internship: {
+            include: {
+              tasks: { orderBy: { taskNumber: 'asc' } }
+            }
+          },
+          submissions: {
+            include: {
+              task: true
+            }
+          }
+        }
+      }),
+      prisma.notification.findMany({
+        where: { userId: internId },
+        orderBy: { createdAt: 'desc' },
+        take: 10
+      }),
+      prisma.payment.findMany({
+        where: { internId },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          internship: { select: { title: true } },
+          paidTask: { select: { title: true } }
+        }
+      })
+    ]);
+
+    // Calculate progress for each enrollment
+    const enrichedEnrollments = enrollments.map(enrollment => {
+      const totalTasks = enrollment.internship.tasks.length;
+      const completedTasks = enrollment.submissions.filter(s => s.status === 'APPROVED').length;
+      const pendingTasks = enrollment.submissions.filter(s => s.status === 'PENDING').length;
+      const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+
+      return {
+        ...enrollment,
+        stats: {
+          totalTasks,
+          completedTasks,
+          pendingTasks,
+          progress: Math.round(progress)
+        }
+      };
+    });
+
+    res.json({
+      success: true,
+      data: {
+        enrollments: enrichedEnrollments,
+        notifications,
+        payments
+      }
+    });
+
+  } catch (error) {
+    console.error('Dashboard error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch dashboard data',
+      error: error.message
+    });
+  }
+});
+
+// ===========================
+// INTERNSHIPS
+// ===========================
+
+// Get all available internships
+router.get('/internships', async (req, res) => {
+  try {
+    const internId = req.user.id;
+
+    const internships = await prisma.internship.findMany({
+      where: { isActive: true },
+      include: {
+        tasks: {
+          select: { id: true, taskNumber: true }
+        },
+        enrollments: {
+          where: { internId },
+          select: { id: true, enrollmentDate: true, finalScore: true }
+        },
+        _count: {
+          select: { tasks: true, enrollments: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json({
+      success: true,
+      data: internships
+    });
+
+  } catch (error) {
+    console.error('Get internships error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch internships',
+      error: error.message
+    });
+  }
+});
+
+// Get single internship details
+router.get('/internships/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const internId = req.user.id;
+
+    const internship = await prisma.internship.findUnique({
+      where: { id },
+      include: {
+        tasks: { orderBy: { taskNumber: 'asc' } },
+        enrollments: {
+          where: { internId }
+        }
+      }
+    });
+
+    if (!internship) {
+      return res.status(404).json({
+        success: false,
+        message: 'Internship not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: internship
+    });
+
+  } catch (error) {
+    console.error('Get internship error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch internship',
+      error: error.message
+    });
+  }
+});
+
+// Enroll in internship
 router.post('/enroll/:internshipId', async (req, res) => {
   try {
     const { internshipId } = req.params;
@@ -11,10 +174,10 @@ router.post('/enroll/:internshipId', async (req, res) => {
 
     // Check if internship exists and is active
     const internship = await prisma.internship.findUnique({
-      where: { id: internshipId, isActive: true }
+      where: { id: internshipId }
     });
 
-    if (!internship) {
+    if (!internship || !internship.isActive) {
       return res.status(404).json({
         success: false,
         message: 'Internship not found or inactive'
@@ -42,134 +205,118 @@ router.post('/enroll/:internshipId', async (req, res) => {
     const enrollment = await prisma.enrollment.create({
       data: {
         internId,
-        internshipId,
-        enrollmentDate: new Date()
+        internshipId
       },
       include: {
-        internship: {
-          select: {
-            title: true,
-            description: true,
-            durationDays: true,
-            passPercentage: true
-          }
-        }
+        internship: true
       }
     });
 
-    // Initialize tasks (unlock first task)
-    const taskInit = await taskUnlockService.initializeEnrollmentTasks(
-      enrollment.id,
-      internshipId
-    );
-
-    // Create welcome notification (already done in initializeEnrollmentTasks, but add journey details)
+    // Create welcome notification
     await prisma.notification.create({
       data: {
         userId: internId,
-        title: '🎓 Welcome to Your Internship!',
-        message: `You've enrolled in "${internship.title}". This is a ${internship.durationDays}-day journey with 35 tasks. Pass score: ${internship.passPercentage}%. Let's get started!`,
+        title: 'Enrollment Successful!',
+        message: `You have successfully enrolled in ${internship.title}. Start your first task now!`,
         type: 'SUCCESS'
       }
     });
 
-    // Audit log
-    await createAuditLog('ENROLLMENT_CREATED', internId, {
-      enrollmentId: enrollment.id,
-      internshipId,
-      internshipTitle: internship.title
-    });
-
     res.status(201).json({
       success: true,
-      message: 'Enrollment successful! Your journey begins now.',
-      data: {
-        enrollment,
-        firstTask: taskInit.firstTask,
-        guidelines: {
-          totalTasks: 35,
-          durationDays: internship.durationDays,
-          passPercentage: internship.passPercentage,
-          taskDeadline: '24 hours per task',
-          certificatePrice: internship.certificatePrice
-        }
-      }
+      message: 'Enrolled successfully',
+      data: enrollment
     });
 
   } catch (error) {
     console.error('Enrollment error:', error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: 'Failed to enroll',
+      error: error.message
     });
   }
 });
 
-// Enhanced task submission with unlock checking
-router.post('/tasks/:taskId/submit', async (req, res) => {
+// ===========================
+// TASKS & SUBMISSIONS
+// ===========================
+
+// Get tasks for an internship
+router.get('/internships/:id/tasks', async (req, res) => {
   try {
-    const { taskId } = req.params;
-    const { githubRepoUrl } = req.body;
+    const { id } = req.params;
     const internId = req.user.id;
-
-    if (!githubRepoUrl) {
-      return res.status(400).json({
-        success: false,
-        message: 'GitHub repository URL is required'
-      });
-    }
-
-    // Validate GitHub URL format
-    const githubUrlRegex = /^https:\/\/github\.com\/[\w\-\.]+\/[\w\-\.]+/;
-    if (!githubUrlRegex.test(githubRepoUrl)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid GitHub repository URL format'
-      });
-    }
-
-    const task = await prisma.task.findUnique({
-      where: { id: taskId },
-      include: {
-        internship: { select: { title: true } }
-      }
-    });
-
-    if (!task) {
-      return res.status(404).json({
-        success: false,
-        message: 'Task not found'
-      });
-    }
 
     // Check enrollment
     const enrollment = await prisma.enrollment.findUnique({
       where: {
         internId_internshipId: {
           internId,
-          internshipId: task.internshipId
+          internshipId: id
         }
+      },
+      include: {
+        submissions: true
       }
     });
 
     if (!enrollment) {
       return res.status(403).json({
         success: false,
-        message: 'Not enrolled in this internship'
+        message: 'You are not enrolled in this internship'
       });
     }
 
-    // Check if task is unlocked
-    const unlockStatus = await taskUnlockService.isTaskUnlocked(
-      enrollment.id,
-      taskId
-    );
+    // Get all tasks
+    const tasks = await prisma.task.findMany({
+      where: { internshipId: id },
+      orderBy: { taskNumber: 'asc' }
+    });
 
-    if (!unlockStatus.unlocked) {
+    // Enrich tasks with submission status
+    const enrichedTasks = tasks.map(task => {
+      const submission = enrollment.submissions.find(s => s.taskId === task.id);
+      return {
+        ...task,
+        submission: submission || null,
+        isLocked: false // You can implement locking logic here
+      };
+    });
+
+    res.json({
+      success: true,
+      data: enrichedTasks
+    });
+
+  } catch (error) {
+    console.error('Get tasks error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch tasks',
+      error: error.message
+    });
+  }
+});
+
+// Submit task
+router.post('/submissions', async (req, res) => {
+  try {
+    const { enrollmentId, taskId, githubRepoUrl } = req.body;
+    const internId = req.user.id;
+
+    // Validate enrollment ownership
+    const enrollment = await prisma.enrollment.findFirst({
+      where: {
+        id: enrollmentId,
+        internId
+      }
+    });
+
+    if (!enrollment) {
       return res.status(403).json({
         success: false,
-        message: unlockStatus.reason,
-        unlocksAt: unlockStatus.unlocksAt
+        message: 'Invalid enrollment'
       });
     }
 
@@ -177,7 +324,7 @@ router.post('/tasks/:taskId/submit', async (req, res) => {
     const existingSubmission = await prisma.submission.findUnique({
       where: {
         enrollmentId_taskId: {
-          enrollmentId: enrollment.id,
+          enrollmentId,
           taskId
         }
       }
@@ -190,37 +337,23 @@ router.post('/tasks/:taskId/submit', async (req, res) => {
       });
     }
 
-    // Calculate if submission is late
-    const taskUnlock = await prisma.taskUnlock.findUnique({
-      where: {
-        enrollmentId_taskId: {
-          enrollmentId: enrollment.id,
-          taskId
-        }
-      }
+    // Get task details
+    const task = await prisma.task.findUnique({
+      where: { id: taskId }
     });
-
-    const deadlineTime = new Date(taskUnlock.unlocksAt.getTime() + 24 * 60 * 60 * 1000);
-    const isLate = new Date() > deadlineTime;
 
     // Create submission
     const submission = await prisma.submission.create({
       data: {
-        enrollmentId: enrollment.id,
+        enrollmentId,
         taskId,
         internId,
-        githubRepoUrl,
-        isLate,
+        submissionDate: new Date(),
+        isLate: false, // You can add deadline logic here
         status: 'PENDING'
       },
       include: {
-        task: {
-          select: {
-            title: true,
-            taskNumber: true,
-            points: true
-          }
-        }
+        task: true
       }
     });
 
@@ -228,209 +361,212 @@ router.post('/tasks/:taskId/submit', async (req, res) => {
     await prisma.notification.create({
       data: {
         userId: internId,
-        title: '✅ Submission Received',
-        message: `Your submission for "${task.title}" has been received ${isLate ? '(Late submission - 10% penalty)' : ''}. It will be reviewed by admin soon.`,
-        type: isLate ? 'WARNING' : 'SUCCESS'
+        title: 'Submission Received',
+        message: `Your submission for "${task.title}" has been received and is under review.`,
+        type: 'INFO'
       }
-    });
-
-    // Notify admin
-    const firstAdmin = await prisma.user.findFirst({
-      where: { role: 'ADMIN' }
-    });
-
-    if (firstAdmin) {
-      await prisma.notification.create({
-        data: {
-          userId: firstAdmin.id,
-          title: '📝 New Submission to Review',
-          message: `${req.user.name} submitted Task ${task.taskNumber}: "${task.title}"`,
-          type: 'INFO'
-        }
-      });
-    }
-
-    // Audit log
-    await createAuditLog('TASK_SUBMITTED', internId, {
-      submissionId: submission.id,
-      taskId,
-      taskNumber: task.taskNumber,
-      isLate
     });
 
     res.status(201).json({
       success: true,
-      message: 'Submission successful',
-      data: {
-        submission,
-        isLate,
-        penalty: isLate ? '10% score penalty applied' : null
-      }
+      message: 'Task submitted successfully',
+      data: submission
     });
 
   } catch (error) {
     console.error('Submit task error:', error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: 'Failed to submit task',
+      error: error.message
     });
   }
 });
 
-// Enhanced progress endpoint
-router.get('/progress/:internshipId', async (req, res) => {
+// Get submission history
+router.get('/submissions', async (req, res) => {
   try {
-    const { internshipId } = req.params;
     const internId = req.user.id;
 
-    const enrollment = await prisma.enrollment.findUnique({
-      where: {
-        internId_internshipId: {
-          internId,
-          internshipId
+    const submissions = await prisma.submission.findMany({
+      where: { internId },
+      include: {
+        task: true,
+        enrollment: {
+          include: {
+            internship: { select: { title: true } }
+          }
         }
       },
-      include: {
-        internship: {
-          select: {
-            title: true,
-            passPercentage: true,
-            certificatePrice: true
-          }
-        },
-        submissions: {
-          include: {
-            task: {
-              select: {
-                taskNumber: true,
-                title: true,
-                points: true
-              }
-            }
-          },
-          orderBy: {
-            task: {
-              taskNumber: 'asc'
-            }
-          }
-        }
-      }
+      orderBy: { submissionDate: 'desc' }
     });
-
-    if (!enrollment) {
-      return res.status(404).json({
-        success: false,
-        message: 'Enrollment not found'
-      });
-    }
-
-    // Get performance metrics
-    const metrics = await scoreCalculationService.calculatePerformanceMetrics(
-      enrollment.id
-    );
-
-    // Get next available task
-    const allTasks = await prisma.task.findMany({
-      where: { internshipId },
-      orderBy: { taskNumber: 'asc' }
-    });
-
-    const submittedTaskIds = enrollment.submissions.map(s => s.taskId);
-    const nextTask = allTasks.find(t => !submittedTaskIds.includes(t.id));
-
-    let nextTaskInfo = null;
-    if (nextTask) {
-      const unlockStatus = await taskUnlockService.isTaskUnlocked(
-        enrollment.id,
-        nextTask.id
-      );
-      nextTaskInfo = {
-        ...nextTask,
-        unlockStatus
-      };
-    }
 
     res.json({
       success: true,
-      data: {
-        enrollment,
-        performance: metrics,
-        nextTask: nextTaskInfo,
-        totalTasks: allTasks.length,
-        remainingTasks: allTasks.length - enrollment.submissions.length
-      }
+      data: submissions
     });
 
   } catch (error) {
-    console.error('Get progress error:', error);
+    console.error('Get submissions error:', error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: 'Failed to fetch submissions',
+      error: error.message
     });
   }
 });
 
-// Get detailed task info with unlock status
-router.get('/tasks/:taskId/details', async (req, res) => {
+// ===========================
+// NOTIFICATIONS
+// ===========================
+
+// Get all notifications
+router.get('/notifications', async (req, res) => {
   try {
-    const { taskId } = req.params;
+    const internId = req.user.id;
+    const { page = 1, limit = 20 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const [notifications, total, unreadCount] = await Promise.all([
+      prisma.notification.findMany({
+        where: { userId: internId },
+        skip,
+        take: parseInt(limit),
+        orderBy: { createdAt: 'desc' }
+      }),
+      prisma.notification.count({ where: { userId: internId } }),
+      prisma.notification.count({ 
+        where: { 
+          userId: internId,
+          isRead: false 
+        } 
+      })
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        notifications,
+        unreadCount,
+        pagination: {
+          total,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          totalPages: Math.ceil(total / parseInt(limit))
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Get notifications error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch notifications',
+      error: error.message
+    });
+  }
+});
+
+// Mark notification as read
+router.patch('/notifications/:id/read', async (req, res) => {
+  try {
+    const { id } = req.params;
     const internId = req.user.id;
 
-    const task = await prisma.task.findUnique({
-      where: { id: taskId },
-      include: {
-        internship: {
-          select: {
-            id: true,
-            title: true
+    const notification = await prisma.notification.updateMany({
+      where: {
+        id,
+        userId: internId
+      },
+      data: { isRead: true }
+    });
+
+    res.json({
+      success: true,
+      message: 'Notification marked as read'
+    });
+
+  } catch (error) {
+    console.error('Mark notification error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to mark notification',
+      error: error.message
+    });
+  }
+});
+
+// Mark all notifications as read
+router.patch('/notifications/read-all', async (req, res) => {
+  try {
+    const internId = req.user.id;
+
+    await prisma.notification.updateMany({
+      where: {
+        userId: internId,
+        isRead: false
+      },
+      data: { isRead: true }
+    });
+
+    res.json({
+      success: true,
+      message: 'All notifications marked as read'
+    });
+
+  } catch (error) {
+    console.error('Mark all notifications error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to mark notifications',
+      error: error.message
+    });
+  }
+});
+
+// ===========================
+// PROFILE
+// ===========================
+
+// Get intern profile
+router.get('/profile', async (req, res) => {
+  try {
+    const internId = req.user.id;
+
+    const profile = await prisma.user.findUnique({
+      where: { id: internId },
+      select: {
+        id: true,
+        userId: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+        enrollments: {
+          include: {
+            internship: true,
+            submissions: {
+              where: { status: 'APPROVED' }
+            }
           }
         }
       }
     });
 
-    if (!task) {
-      return res.status(404).json({
-        success: false,
-        message: 'Task not found'
-      });
-    }
-
-    // Get enrollment
-    const enrollment = await prisma.enrollment.findUnique({
-      where: {
-        internId_internshipId: {
-          internId,
-          internshipId: task.internshipId
-        }
-      }
-    });
-
-    if (!enrollment) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not enrolled in this internship'
-      });
-    }
-
-    // Get task access info
-    const accessInfo = await taskUnlockService.getTaskAccessInfo(
-      enrollment.id,
-      taskId
-    );
-
     res.json({
       success: true,
-      data: {
-        task,
-        access: accessInfo
-      }
+      data: profile
     });
 
   } catch (error) {
-    console.error('Get task details error:', error);
+    console.error('Get profile error:', error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: 'Failed to fetch profile',
+      error: error.message
     });
   }
 });
+
+module.exports = router;

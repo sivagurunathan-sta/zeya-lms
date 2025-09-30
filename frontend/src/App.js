@@ -1,35 +1,42 @@
-import React, { useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { Toaster } from 'react-hot-toast';
-
-import Login from './pages/auth/Login';
-import Register from './pages/auth/Register';
-import AdminDashboard from './pages/admin/Dashboard';
-import StudentDashboard from './pages/student/Dashboard';
-import CourseDetails from './pages/student/CourseDetails';
-import TaskView from './pages/student/TaskView';
-import NotFound from './pages/NotFound';
-import PrivateRoute from './components/PrivateRoute';
-
-import { checkAuth } from './store/slices/authSlice';
-
-import './App.css';
+// src/App.js
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import AdminDashboard from './components/AdminDashboard';
+import UserDashboard from './components/UserDashboard';
+import Login from './components/Login';
 
 function App() {
-  const dispatch = useDispatch();
-  const { isAuthenticated, user, loading } = useSelector((state) => state.auth);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is authenticated on app load
-    dispatch(checkAuth());
-  }, [dispatch]);
+    // Check if user is logged in
+    const storedUser = localStorage.getItem('user');
+    const token = localStorage.getItem('token');
+    
+    if (storedUser && token) {
+      setUser(JSON.parse(storedUser));
+    }
+    setLoading(false);
+  }, []);
+
+  const handleLogin = (userData, token) => {
+    localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem('token', token);
+    setUser(userData);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    setUser(null);
+  };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading...</p>
         </div>
       </div>
@@ -37,89 +44,55 @@ function App() {
   }
 
   return (
-    <div className="App min-h-screen bg-gray-50">
+    <Router>
       <Routes>
-        {/* Public Routes */}
         <Route 
           path="/login" 
-          element={!isAuthenticated ? <Login /> : <Navigate to={user?.role === 'ADMIN' ? '/admin' : '/dashboard'} />} 
-        />
-        <Route 
-          path="/register" 
-          element={!isAuthenticated ? <Register /> : <Navigate to="/dashboard" />} 
-        />
-
-        {/* Admin Routes */}
-        <Route 
-          path="/admin/*" 
           element={
-            <PrivateRoute role="ADMIN">
-              <AdminDashboard />
-            </PrivateRoute>
+            user ? (
+              <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} />
+            ) : (
+              <Login onLogin={handleLogin} />
+            )
           } 
         />
-
-        {/* Student Routes */}
-        <Route 
-          path="/dashboard" 
+        
+        <Route
+          path="/admin"
           element={
-            <PrivateRoute>
-              <StudentDashboard />
-            </PrivateRoute>
-          } 
+            user && user.role === 'admin' ? (
+              <AdminDashboard user={user} onLogout={handleLogout} />
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
         />
-        <Route 
-          path="/courses/:id" 
+        
+        <Route
+          path="/dashboard"
           element={
-            <PrivateRoute>
-              <CourseDetails />
-            </PrivateRoute>
-          } 
+            user && user.role === 'user' ? (
+              <UserDashboard user={user} onLogout={handleLogout} />
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
         />
-        <Route 
-          path="/tasks/:id" 
-          element={
-            <PrivateRoute>
-              <TaskView />
-            </PrivateRoute>
-          } 
-        />
-
-        {/* Default Routes */}
+        
         <Route 
           path="/" 
           element={
-            isAuthenticated 
-              ? <Navigate to={user?.role === 'ADMIN' ? '/admin' : '/dashboard'} />
-              : <Navigate to="/login" />
+            user ? (
+              <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} />
+            ) : (
+              <Navigate to="/login" />
+            )
           } 
         />
-        <Route path="*" element={<NotFound />} />
+        
+        <Route path="*" element={<Navigate to="/" />} />
       </Routes>
-
-      <Toaster 
-        position="top-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: '#363636',
-            color: '#fff',
-          },
-          success: {
-            iconTheme: {
-              primary: '#10b981',
-              secondary: '#fff',
-            },
-          },
-          error: {
-            iconTheme: {
-              primary: '#ef4444',
-              secondary: '#fff',
-            },
-          },
-        }}
-      />
-    </div>
+    </Router>
   );
 }
 
