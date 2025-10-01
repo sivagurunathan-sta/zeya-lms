@@ -1,10 +1,9 @@
-// prisma/schema.prisma - ENHANCED VERSION
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "mongodb"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -17,7 +16,6 @@ enum SubmissionStatus {
   PENDING
   APPROVED
   REJECTED
-  RESUBMITTED
 }
 
 enum PaymentStatus {
@@ -33,472 +31,277 @@ enum PaymentType {
 
 enum NotificationType {
   INFO
-  WARNING
   SUCCESS
+  WARNING
   ERROR
 }
 
-enum ChatRoomType {
-  PRIVATE
-  GROUP
-}
-
-enum MessageType {
-  TEXT
+enum TaskSubmissionType {
+  GITHUB
+  FORM
   FILE
-  TASK_ASSIGNMENT
-  TASK_SUBMISSION
-  TASK_REVIEW
-  SYSTEM
-}
-
-enum PrivateTaskStatus {
-  ASSIGNED
-  SUBMITTED
-  COMPLETED
-  REJECTED
-}
-
-enum CertificateSessionStatus {
-  PENDING_UPLOAD
-  COMPLETED
-  EXPIRED
-}
-
-enum ValidationStatus {
-  PENDING
-  APPROVED
-  REJECTED
 }
 
 model User {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId        String   @unique @map("user_id") 
-  name          String
-  email         String   @unique
-  role          Role     @default(INTERN)
-  passwordHash  String   @map("password_hash")
-  isActive      Boolean  @default(true) @map("is_active")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(INTERN)
+  phone        String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   // Relations
-  enrollments           Enrollment[]
-  submissions           Submission[]
-  payments              Payment[]
-  notifications         Notification[]
-  verifiedPayments      Payment[] @relation("PaymentVerifier")
-  
-  // Enhanced relations
-  chatPermission        ChatPermission?
-  chatParticipants      ChatParticipant[]
-  sentMessages          ChatMessage[]
-  readMessages          MessageRead[]
-  assignedPrivateTasks  PrivateTask[] @relation("AssignedTo")
-  createdPrivateTasks   PrivateTask[] @relation("AssignedBy")
-  privateTaskSubmissions PrivateTaskSubmission[]
-  certificateSessions   CertificateSession[]
-  certificateValidations CertificateValidation[]
-  reviewedValidations   CertificateValidation[] @relation("ValidationReviewer")
-  createdChatRooms      ChatRoom[]
-  auditLogs             AuditLog[]
+  enrollments      Enrollment[]
+  submissions      Submission[]
+  payments         Payment[]
+  notifications    Notification[]
+  chatPermission   ChatPermission?
+  sentMessages     ChatMessage[]      @relation("SentMessages")
+  receivedMessages ChatMessage[]      @relation("ReceivedMessages")
+  assignedTasks    PrivateTask[]      @relation("AssignedBy")
+  privateTasks     PrivateTask[]      @relation("AssignedTo")
+  auditLogs        AuditLog[]
 
-  @@map("users")
+  @@index([email])
+  @@index([userId])
+  @@index([role])
 }
 
 model Internship {
-  id              String   @id @default(auto()) @map("_id") @db.ObjectId
-  title           String
-  description     String
-  coverImage      String?  @map("cover_image")
-  durationDays    Int      @default(35) @map("duration_days")
-  passPercentage  Float    @default(75.0) @map("pass_percentage")
-  certificatePrice Int     @default(499) @map("certificate_price")
-  isActive        Boolean  @default(true) @map("is_active")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  id             String   @id @default(uuid())
+  title          String
+  description    String   @db.Text
+  coverImage     String?
+  durationDays   Int      @default(35)
+  isActive       Boolean  @default(true)
+  price          Decimal  @default(0) @db.Decimal(10, 2)
+  certificatePrice Decimal @default(499) @db.Decimal(10, 2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   // Relations
   tasks       Task[]
   enrollments Enrollment[]
+  materials   CourseMaterial[]
   payments    Payment[]
 
-  @@map("internships")
+  @@index([isActive])
+}
+
+model CourseMaterial {
+  id           String   @id @default(uuid())
+  internshipId String
+  title        String
+  description  String?  @db.Text
+  materialType String
+  fileUrl      String
+  fileSize     Int?
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  internship Internship @relation(fields: [internshipId], references: [id], onDelete: Cascade)
+
+  @@index([internshipId])
 }
 
 model Task {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  internshipId String   @map("internship_id") @db.ObjectId
-  taskNumber   Int      @map("task_number")
-  title        String
-  description  String
-  videoUrl     String?  @map("video_url")
-  files        Json?    
-  isRequired   Boolean  @default(true) @map("is_required")
-  points       Int      @default(100)
-  waitTimeHours Int     @default(12) @map("wait_time_hours")
-  maxAttempts  Int      @default(3) @map("max_attempts")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id              String             @id @default(uuid())
+  internshipId    String
+  taskNumber      Int
+  title           String
+  description     String             @db.Text
+  points          Int                @default(10)
+  submissionType  TaskSubmissionType @default(GITHUB)
+  isActive        Boolean            @default(true)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
 
-  // Relations
   internship  Internship   @relation(fields: [internshipId], references: [id], onDelete: Cascade)
   submissions Submission[]
-  taskUnlocks TaskUnlock[]
 
-  @@map("tasks")
+  @@unique([internshipId, taskNumber])
+  @@index([internshipId])
 }
 
 model Enrollment {
-  id                   String    @id @default(auto()) @map("_id") @db.ObjectId
-  internId            String    @map("intern_id") @db.ObjectId
-  internshipId        String    @map("internship_id") @db.ObjectId
-  enrollmentDate      DateTime  @default(now()) @map("enrollment_date")
-  completionDate      DateTime? @map("completion_date")
-  finalScore          Float?    @map("final_score")
-  isCompleted         Boolean   @default(false) @map("is_completed")
-  certificateEligible Boolean   @default(false) @map("certificate_eligible")
-  certificatePurchased Boolean  @default(false) @map("certificate_purchased")
-  certificateUrl      String?   @map("certificate_url")
-  certificateNumber   String?   @map("certificate_number")
-  certificateIssuedAt DateTime? @map("certificate_issued_at")
-  certificateSessionEnabled Boolean @default(false) @map("certificate_session_enabled")
-  certificateSessionEnabledAt DateTime? @map("certificate_session_enabled_at")
-  createdAt           DateTime  @default(now()) @map("created_at")
-  updatedAt           DateTime  @updatedAt @map("updated_at")
+  id                    String    @id @default(uuid())
+  userId                String
+  internshipId          String
+  enrollmentDate        DateTime  @default(now())
+  isCompleted           Boolean   @default(false)
+  completionDate        DateTime?
+  finalScore            Int?
+  certificatePurchased  Boolean   @default(false)
+  certificateIssued     Boolean   @default(false)
+  certificateIssuedAt   DateTime?
+  certificateUrl        String?
+  certificateNumber     String?   @unique
+  updatedAt             DateTime  @updatedAt
 
-  // Relations
-  intern      User         @relation(fields: [internId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   internship  Internship   @relation(fields: [internshipId], references: [id], onDelete: Cascade)
   submissions Submission[]
-  taskUnlocks TaskUnlock[]
-  certificateSessions CertificateSession[]
-  resubmissionOpportunities ResubmissionOpportunity[]
 
-  @@unique([internId, internshipId])
-  @@map("enrollments")
+  @@unique([userId, internshipId])
+  @@index([userId])
+  @@index([internshipId])
 }
 
 model Submission {
-  id             String           @id @default(auto()) @map("_id") @db.ObjectId
-  enrollmentId   String           @map("enrollment_id") @db.ObjectId
-  taskId         String           @map("task_id") @db.ObjectId
-  internId       String           @map("intern_id") @db.ObjectId
+  id               String           @id @default(uuid())
+  enrollmentId     String
+  taskId           String
+  userId           String
+  submissionType   TaskSubmissionType
+  githubUrl        String?
+  formData         String?          @db.Text
+  fileUrl          String?
+  submissionDate   DateTime         @default(now())
+  status           SubmissionStatus @default(PENDING)
+  score            Int?
+  adminFeedback    String?          @db.Text
+  reviewedAt       DateTime?
+  nextTaskUnlocked Boolean          @default(false)
+  updatedAt        DateTime         @updatedAt
 
-  submissionDate DateTime         @default(now()) @map("submission_date")
-  isLate         Boolean          @default(false) @map("is_late")
-  score          Float?
-  adminFeedback  String?          @map("admin_feedback")
-  status         SubmissionStatus @default(PENDING)
-  reviewedAt     DateTime?        @map("reviewed_at")
-  reviewedBy     String?          @map("reviewed_by") @db.ObjectId
-  attemptNumber  Int              @default(1) @map("attempt_number")
-  createdAt      DateTime         @default(now()) @map("created_at")
-  updatedAt      DateTime         @updatedAt @map("updated_at")
-
-  // Relations
   enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   task       Task       @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  intern     User       @relation(fields: [internId], references: [id], onDelete: Cascade)
-  resubmissionOpportunities ResubmissionOpportunity[]
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([enrollmentId, taskId])
-  @@map("submissions")
+  @@index([enrollmentId])
+  @@index([userId])
+  @@index([status])
 }
 
 model Payment {
-  id            String        @id @default(auto()) @map("_id") @db.ObjectId
-  internId      String        @map("intern_id") @db.ObjectId
-  internshipId  String?       @map("internship_id") @db.ObjectId
-  paidTaskId    String?       @map("paid_task_id") @db.ObjectId
-  amount        Int
-  paymentType   PaymentType   @map("payment_type")
-  qrCodeUrl     String        @map("qr_code_url")
-  paymentStatus PaymentStatus @default(PENDING) @map("payment_status")
-  transactionId String?       @map("transaction_id")
-  upiId         String?       @map("upi_id")
-  paymentProofUrl String?     @map("payment_proof_url")
-  paymentProofSubmittedAt DateTime? @map("payment_proof_submitted_at")
-  verifiedBy    String?       @map("verified_by") @db.ObjectId
-  verifiedAt    DateTime?     @map("verified_at")
-  verificationMessage String? @map("verification_message")
-  verifiedTransactionId String? @map("verified_transaction_id")
-  remarks       String?
-  createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @updatedAt @map("updated_at")
+  id                     String        @id @default(uuid())
+  userId                 String
+  internshipId           String?
+  paidTaskId             String?
+  amount                 Decimal       @db.Decimal(10, 2)
+  paymentType            PaymentType
+  paymentStatus          PaymentStatus @default(PENDING)
+  paymentProofUrl        String?
+  transactionId          String?
+  verifiedTransactionId  String?
+  qrCodeUrl              String?
+  verifiedAt             DateTime?
+  rejectionReason        String?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
 
-  // Relations
-  intern     User        @relation(fields: [internId], references: [id], onDelete: Cascade)
-  internship Internship? @relation(fields: [internshipId], references: [id])
-  paidTask   PaidTask?   @relation(fields: [paidTaskId], references: [id])
-  verifier   User?       @relation("PaymentVerifier", fields: [verifiedBy], references: [id])
-  certificateSessions CertificateSession[]
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  internship Internship? @relation(fields: [internshipId], references: [id], onDelete: SetNull)
+  paidTask   PaidTask?   @relation(fields: [paidTaskId], references: [id], onDelete: SetNull)
 
-  @@map("payments")
+  @@index([userId])
+  @@index([paymentStatus])
 }
 
 model PaidTask {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  id          String   @id @default(uuid())
   title       String
-  description String
-  price       Int      @default(1000)
-  files       Json?    
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  description String   @db.Text
+  price       Decimal  @default(1000) @db.Decimal(10, 2)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  // Relations
   payments Payment[]
-
-  @@map("paid_tasks")
-}
-
-model Notification {
-  id        String           @id @default(auto()) @map("_id") @db.ObjectId
-  userId    String           @map("user_id") @db.ObjectId
-  title     String
-  message   String
-  type      NotificationType @default(INFO)
-  isRead    Boolean          @default(false) @map("is_read")
-  createdAt DateTime         @default(now()) @map("created_at")
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("notifications")
-}
-
-// ==========================
-// NEW ENHANCED MODELS
-// ==========================
-
-model TaskUnlock {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  enrollmentId String   @map("enrollment_id") @db.ObjectId
-  taskId       String   @map("task_id") @db.ObjectId
-  unlocksAt    DateTime @map("unlocks_at")
-  isUnlocked   Boolean  @default(false) @map("is_unlocked")
-  createdAt    DateTime @default(now()) @map("created_at")
-
-  // Relations
-  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-  task       Task       @relation(fields: [taskId], references: [id], onDelete: Cascade)
-
-  @@unique([enrollmentId, taskId])
-  @@map("task_unlocks")
-}
-
-model ResubmissionOpportunity {
-  id                   String   @id @default(auto()) @map("_id") @db.ObjectId
-  originalSubmissionId String   @map("original_submission_id") @db.ObjectId
-  enrollmentId         String   @map("enrollment_id") @db.ObjectId
-  taskId               String   @map("task_id") @db.ObjectId
-  allowedUntil         DateTime @map("allowed_until")
-  isUsed               Boolean  @default(false) @map("is_used")
-  createdAt            DateTime @default(now()) @map("created_at")
-
-  // Relations
-  originalSubmission Submission @relation(fields: [originalSubmissionId], references: [id], onDelete: Cascade)
-  enrollment         Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-
-  @@map("resubmission_opportunities")
-}
-
-model CertificateSession {
-  id                String                  @id @default(auto()) @map("_id") @db.ObjectId
-  enrollmentId      String                  @map("enrollment_id") @db.ObjectId
-  internId          String                  @map("intern_id") @db.ObjectId
-  paymentId         String                  @map("payment_id") @db.ObjectId
-  status            CertificateSessionStatus @default(PENDING_UPLOAD)
-  sessionStartedAt  DateTime                @map("session_started_at")
-  expectedDeliveryAt DateTime               @map("expected_delivery_at")
-  certificateUrl    String?                 @map("certificate_url")
-  certificateNumber String?                 @map("certificate_number")
-  issuedAt          DateTime?               @map("issued_at")
-  uploadedBy        String?                 @map("uploaded_by") @db.ObjectId
-  uploadedAt        DateTime?               @map("uploaded_at")
-  adminNotes        String?                 @map("admin_notes")
-  createdAt         DateTime                @default(now()) @map("created_at")
-
-  // Relations
-  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-  intern     User       @relation(fields: [internId], references: [id], onDelete: Cascade)
-  payment    Payment    @relation(fields: [paymentId], references: [id], onDelete: Cascade)
-
-  @@map("certificate_sessions")
-}
-
-model CertificateValidation {
-  id               String           @id @default(auto()) @map("_id") @db.ObjectId
-  userId           String           @map("user_id") @db.ObjectId
-  certificateUrl   String           @map("certificate_url")
-  certificateNumber String          @map("certificate_number")
-  internshipTitle  String           @map("internship_title")
-  issueDate        DateTime?        @map("issue_date")
-  status           ValidationStatus @default(PENDING)
-  isValid          Boolean?         @map("is_valid")
-  reviewMessage    String?          @map("review_message")
-  submittedAt      DateTime         @map("submitted_at")
-  reviewedAt       DateTime?        @map("reviewed_at")
-  reviewedBy       String?          @map("reviewed_by") @db.ObjectId
-
-  // Relations
-  user     User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  reviewer User? @relation("ValidationReviewer", fields: [reviewedBy], references: [id])
-
-  @@map("certificate_validations")
 }
 
 model ChatPermission {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId    String   @unique @map("user_id") @db.ObjectId
-  isEnabled Boolean  @default(false) @map("is_enabled")
-  enabledAt DateTime? @map("enabled_at")
-  enabledBy String?  @map("enabled_by") @db.ObjectId
-  createdAt DateTime @default(now()) @map("created_at")
+  id          String    @id @default(uuid())
+  userId      String    @unique
+  isEnabled   Boolean   @default(false)
+  enabledAt   DateTime?
+  enabledBy   String?
+  disabledAt  DateTime?
+  createdAt   DateTime  @default(now())
 
-  // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("chat_permissions")
+  @@index([isEnabled])
 }
 
 model ChatRoom {
-  id             String       @id @default(auto()) @map("_id") @db.ObjectId
-  name           String
-  type           ChatRoomType @default(PRIVATE)
-  description    String?
-  createdBy      String       @map("created_by") @db.ObjectId
-  lastActivityAt DateTime?    @map("last_activity_at")
-  isActive       Boolean      @default(true) @map("is_active")
-  createdAt      DateTime     @default(now()) @map("created_at")
+  id        String   @id @default(uuid())
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  // Relations
-  creator      User               @relation(fields: [createdBy], references: [id])
-  participants ChatParticipant[]
-  messages     ChatMessage[]
-  privateTasks PrivateTask[]
+  messages ChatMessage[]
 
-  @@map("chat_rooms")
-}
-
-model ChatParticipant {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  chatRoomId String   @map("chat_room_id") @db.ObjectId
-  userId     String   @map("user_id") @db.ObjectId
-  role       String   @default("MEMBER") // ADMIN, MEMBER
-  joinedAt   DateTime @default(now()) @map("joined_at")
-  leftAt     DateTime? @map("left_at")
-  isActive   Boolean  @default(true) @map("is_active")
-
-  // Relations
-  chatRoom ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([chatRoomId, userId])
-  @@map("chat_participants")
+  @@index([userId])
 }
 
 model ChatMessage {
-  id          String      @id @default(auto()) @map("_id") @db.ObjectId
-  chatRoomId  String      @map("chat_room_id") @db.ObjectId
-  senderId    String      @map("sender_id") @db.ObjectId
-  content     String
-  messageType MessageType @default(TEXT) @map("message_type")
-  attachments Json?
-  replyToId   String?     @map("reply_to_id") @db.ObjectId
-  taskId      String?     @map("task_id") @db.ObjectId
-  isDeleted   Boolean     @default(false) @map("is_deleted")
-  deletedAt   DateTime?   @map("deleted_at")
-  deletedBy   String?     @map("deleted_by") @db.ObjectId
-  createdAt   DateTime    @default(now()) @map("created_at")
-  updatedAt   DateTime    @updatedAt @map("updated_at")
+  id         String   @id @default(uuid())
+  chatRoomId String
+  senderId   String
+  receiverId String
+  message    String   @db.Text
+  fileUrl    String?
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
 
-  // Relations
-  chatRoom ChatRoom      @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
-  sender   User          @relation(fields: [senderId], references: [id], onDelete: Cascade)
-  replyTo  ChatMessage?  @relation("MessageReply", fields: [replyToId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  replies  ChatMessage[] @relation("MessageReply")
-  readBy   MessageRead[]
+  chatRoom ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  sender   User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User     @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
 
-  @@map("chat_messages")
-}
-
-model MessageRead {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  messageId String   @map("message_id") @db.ObjectId
-  userId    String   @map("user_id") @db.ObjectId
-  readAt    DateTime @default(now()) @map("read_at")
-
-  // Relations
-  message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([messageId, userId])
-  @@map("message_reads")
+  @@index([chatRoomId])
+  @@index([senderId])
+  @@index([receiverId])
 }
 
 model PrivateTask {
-  id           String            @id @default(auto()) @map("_id") @db.ObjectId
-  title        String
-  description  String
-  instructions String?
-  assignedTo   String            @map("assigned_to") @db.ObjectId
-  assignedBy   String            @map("assigned_by") @db.ObjectId
-  chatRoomId   String            @map("chat_room_id") @db.ObjectId
-  deadline     DateTime?
-  points       Int               @default(100)
-  files        Json?
-  status       PrivateTaskStatus @default(ASSIGNED)
-  assignedAt   DateTime          @default(now()) @map("assigned_at")
-  submittedAt  DateTime?         @map("submitted_at")
-  completedAt  DateTime?         @map("completed_at")
-  createdAt    DateTime          @default(now()) @map("created_at")
+  id               String    @id @default(uuid())
+  assignedToUserId String
+  assignedByUserId String
+  title            String
+  description      String    @db.Text
+  dueDate          DateTime?
+  isCompleted      Boolean   @default(false)
+  submissionUrl    String?
+  completedAt      DateTime?
+  createdAt        DateTime  @default(now())
 
-  // Relations
-  assignedToUser User                       @relation("AssignedTo", fields: [assignedTo], references: [id], onDelete: Cascade)
-  assignedByUser User                       @relation("AssignedBy", fields: [assignedBy], references: [id], onDelete: Cascade)
-  chatRoom       ChatRoom                   @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
-  submission     PrivateTaskSubmission?
+  assignedTo User @relation("AssignedTo", fields: [assignedToUserId], references: [id], onDelete: Cascade)
+  assignedBy User @relation("AssignedBy", fields: [assignedByUserId], references: [id], onDelete: Cascade)
 
-  @@map("private_tasks")
+  @@index([assignedToUserId])
 }
 
-model PrivateTaskSubmission {
-  id             String               @id @default(auto()) @map("_id") @db.ObjectId
-  privateTaskId  String               @unique @map("private_task_id") @db.ObjectId
-  submittedBy    String               @map("submitted_by") @db.ObjectId
-  submissionText String?              @map("submission_text")
-  fileUrl        String?              @map("file_url")
-  fileName       String?              @map("file_name")
-  githubUrl      String?              @map("github_url")
-  status         SubmissionStatus     @default(PENDING)
-  score          Int?
-  feedback       String?
-  submittedAt    DateTime             @default(now()) @map("submitted_at")
-  reviewedAt     DateTime?            @map("reviewed_at")
-  reviewedBy     String?              @map("reviewed_by") @db.ObjectId
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  title     String
+  message   String           @db.Text
+  type      NotificationType @default(INFO)
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
 
-  // Relations
-  privateTask PrivateTask @relation(fields: [privateTaskId], references: [id], onDelete: Cascade)
-  submitter   User        @relation(fields: [submittedBy], references: [id], onDelete: Cascade)
-
-  @@map("private_task_submissions")
-}
-
-model AuditLog {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  action    String   @map("action")
-  userId    String   @map("user_id") @db.ObjectId
-  details   String?  @map("details")
-  ipAddress String?  @map("ip_address")
-  timestamp DateTime @default(now()) @map("timestamp")
-
-  // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-  @@index([action])
-  @@index([timestamp])
-  @@map("audit_logs")
+  @@index([isRead])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String
+  userId    String
+  details   String   @db.Text
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
 }

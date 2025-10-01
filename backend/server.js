@@ -1,4 +1,4 @@
-// backend/server.js
+// server.js - Main Entry Point
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -7,12 +7,12 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
-const adminEnhancedRoutes = require('./src/routes/admin-enhanced');
+const cron = require('node-cron');
 require('dotenv').config();
 
 const app = express();
 
-// Create uploads directories if they don't exist
+// Create all required upload directories
 const uploadsDirectories = [
   'uploads',
   'uploads/courses',
@@ -20,17 +20,24 @@ const uploadsDirectories = [
   'uploads/submissions',
   'uploads/payments',
   'uploads/certificates',
-  'uploads/profiles'
+  'uploads/intern-certificates',
+  'uploads/profiles',
+  'uploads/qr-codes',
+  'uploads/chat'
 ];
 
 uploadsDirectories.forEach(dir => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
-    console.log(`Created directory: ${dir}`);
+    console.log(`✅ Created directory: ${dir}`);
   }
 });
 
-// Security middleware
+// ==========================================
+// SECURITY & MIDDLEWARE CONFIGURATION
+// ==========================================
+
+// Security headers
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
@@ -46,73 +53,152 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Compression middleware
+// Compression
 app.use(compression());
 
-// Logging middleware
+// Logging
 app.use(morgan('combined'));
 
 // CORS configuration
 app.use(cors({
-  origin: 'http://localhost:3000', // Your frontend URL
+  origin: process.env.FRONTEND_URL || ['http://localhost:3000', 'http://localhost:3001'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
-// Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Body parsing
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Static file serving
+// Static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// API Routes
-app.use('/api/auth', require('./src/routes/auth'));
-app.use('/api/admin', require('./src/routes/admin'));
-app.use('/api/admin/enhanced', require('./src/routes/admin-enhanced'));
-app.use('/api/intern', require('./src/routes/intern'));
-app.use('/api/payments', require('./src/routes/payments'));
-app.use('/api/certificates', require('./src/routes/certificates'));
-app.use('/api/chat', require('./src/routes/chat'));
+// ==========================================
+// API ROUTES - ALL MODULES
+// ==========================================
 
-// Health check endpoint
+// Authentication
+app.use('/api/auth', require('./src/routes/auth'));
+
+// Admin Routes - Modularized
+app.use('/api/admin/users', require('./src/routes/admin/users'));
+app.use('/api/admin/tasks', require('./src/routes/admin/tasks'));
+app.use('/api/admin/payments', require('./src/routes/admin/payments'));
+app.use('/api/admin/certificates', require('./src/routes/admin/certificates'));
+app.use('/api/admin/chat', require('./src/routes/admin/chat'));
+app.use('/api/admin/dashboard', require('./src/routes/admin/dashboard'));
+
+// Intern Routes - Modularized
+app.use('/api/intern/profile', require('./src/routes/intern/profile'));
+app.use('/api/intern/tasks', require('./src/routes/intern/tasks'));
+app.use('/api/intern/payments', require('./src/routes/intern/payments'));
+app.use('/api/intern/certificates', require('./src/routes/intern/certificates'));
+app.use('/api/intern/chat', require('./src/routes/intern/chat'));
+
+// Public Routes
+app.use('/api/public', require('./src/routes/public'));
+
+// ==========================================
+// HEALTH CHECK & DOCUMENTATION
+// ==========================================
+
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'OK', 
-    message: 'LMS Server is running',
+    message: 'Unified Student LMS Server is running',
     timestamp: new Date().toISOString(),
-    version: '2.0.0'
+    version: '4.0.0',
+    modules: ['Users', 'Tasks', 'Payments', 'Certificates', 'Chat']
   });
 });
 
-// API documentation endpoint
 app.get('/api/docs', (req, res) => {
   res.json({
     success: true,
-    message: 'Student LMS API Documentation',
-    version: '2.0.0',
-    endpoints: {
+    message: 'Student LMS API Documentation v4.0',
+    version: '4.0.0',
+    modules: {
       authentication: {
-        'POST /api/auth/login': 'User login',
-        'GET /api/auth/me': 'Get current user info',
-        'POST /api/auth/change-password': 'Change password'
+        'POST /api/auth/login': 'User login (Google OAuth / userId)',
+        'GET /api/auth/me': 'Get current user profile',
+        'POST /api/auth/change-password': 'Change password',
+        'POST /api/auth/logout': 'Logout user'
       },
-      admin: {
-        'GET /api/admin/dashboard': 'Admin dashboard analytics',
+      adminUsers: {
+        'GET /api/admin/users': 'Get all users with filters',
+        'GET /api/admin/users/:userId': 'Get complete user profile',
         'POST /api/admin/users/bulk-add': 'Bulk add users',
-        'GET /api/admin/submissions/review': 'Get submissions for review'
+        'PUT /api/admin/users/:userId': 'Update user details',
+        'POST /api/admin/users/:userId/revoke': 'Revoke user access',
+        'POST /api/admin/users/:userId/restore': 'Restore user access'
       },
-      intern: {
-        'GET /api/intern/dashboard': 'Intern dashboard',
-        'POST /api/intern/enroll/:internshipId': 'Enroll in internship',
-        'GET /api/intern/internships/:id/tasks': 'Get internship tasks'
+      adminTasks: {
+        'POST /api/admin/tasks/create-course': 'Create internship with 35 tasks',
+        'GET /api/admin/tasks/submissions': 'Get all submissions',
+        'GET /api/admin/tasks/submissions/pending': 'Get pending reviews',
+        'PUT /api/admin/tasks/submissions/:id/review': 'Approve/Reject submission',
+        'GET /api/admin/tasks/courses': 'Get all courses',
+        'PUT /api/admin/tasks/courses/:id': 'Update course'
+      },
+      adminPayments: {
+        'GET /api/admin/payments': 'Get all payments',
+        'GET /api/admin/payments/pending': 'Get pending verifications',
+        'POST /api/admin/payments/:id/verify': 'Verify payment proof',
+        'POST /api/admin/payments/:id/reject': 'Reject payment'
+      },
+      adminCertificates: {
+        'GET /api/admin/certificates/requests': 'Get certificate purchase requests',
+        'POST /api/admin/certificates/upload': 'Upload certificate to intern',
+        'GET /api/admin/certificates/issued': 'Get all issued certificates',
+        'POST /api/admin/certificates/:userId/validate': 'Validate cert for paid tasks'
+      },
+      adminChat: {
+        'GET /api/admin/chat/rooms': 'Get all chat rooms',
+        'POST /api/admin/chat/create/:userId': 'Create chat room',
+        'GET /api/admin/chat/:roomId/messages': 'Get messages',
+        'POST /api/admin/chat/:roomId/send': 'Send message',
+        'POST /api/admin/chat/:roomId/assign-task': 'Assign private task'
+      },
+      internProfile: {
+        'GET /api/intern/profile/dashboard': 'Intern dashboard',
+        'POST /api/intern/profile/enroll/:courseId': 'Enroll in course',
+        'GET /api/intern/profile/enrollments': 'Get my enrollments',
+        'GET /api/intern/profile/notifications': 'Get notifications'
+      },
+      internTasks: {
+        'GET /api/intern/tasks/:enrollmentId': 'Get my tasks',
+        'POST /api/intern/tasks/:taskId/submit': 'Submit task (GitHub/Form/File)',
+        'GET /api/intern/tasks/submission/:id': 'Get submission details',
+        'GET /api/intern/tasks/progress/:enrollmentId': 'Get progress'
+      },
+      internPayments: {
+        'POST /api/intern/payments/initiate-certificate': 'Start certificate payment',
+        'POST /api/intern/payments/:id/upload-proof': 'Upload payment screenshot',
+        'GET /api/intern/payments/history': 'Payment history',
+        'POST /api/intern/payments/initiate-paid-task': 'Buy paid task'
+      },
+      internCertificates: {
+        'GET /api/intern/certificates/status': 'Check eligibility',
+        'GET /api/intern/certificates/download/:enrollmentId': 'Download certificate',
+        'POST /api/intern/certificates/submit-validation': 'Submit for validation',
+        'GET /api/intern/certificates/validation-status': 'Check validation status'
+      },
+      internChat: {
+        'GET /api/intern/chat/room': 'Get my chat room',
+        'GET /api/intern/chat/messages': 'Get messages',
+        'POST /api/intern/chat/send': 'Send message',
+        'GET /api/intern/chat/private-tasks': 'Get assigned private tasks',
+        'POST /api/intern/chat/private-tasks/:id/submit': 'Submit private task'
       }
     }
   });
 });
 
-// Initialize database
+// ==========================================
+// DATABASE INITIALIZATION
+// ==========================================
+
 app.post('/api/init-db', async (req, res) => {
   try {
     const { PrismaClient } = require('@prisma/client');
@@ -139,16 +225,36 @@ app.post('/api/init-db', async (req, res) => {
       console.log('✅ Admin user created');
     }
 
+    // Create sample intern
+    const existingIntern = await prisma.user.findFirst({
+      where: { userId: 'INT2025001' }
+    });
+
+    if (!existingIntern) {
+      const hashedPassword = await bcrypt.hash('int2025001', 10);
+      await prisma.user.create({
+        data: {
+          userId: 'INT2025001',
+          name: 'Sample Intern',
+          email: 'intern@lms.com',
+          role: 'INTERN',
+          passwordHash: hashedPassword,
+          isActive: true
+        }
+      });
+      console.log('✅ Sample intern created');
+    }
+
     await prisma.$disconnect();
 
     res.json({
       success: true,
       message: 'Database initialized successfully',
       data: {
-        adminCredentials: {
-          userId: 'ADMIN001',
-          password: 'admin123'
-        }
+        credentials: [
+          { role: 'Admin', userId: 'ADMIN001', password: 'admin123' },
+          { role: 'Intern', userId: 'INT2025001', password: 'int2025001' }
+        ]
       }
     });
 
@@ -162,22 +268,89 @@ app.post('/api/init-db', async (req, res) => {
   }
 });
 
-// Catch-all for undefined routes
+// ==========================================
+// CRON JOBS - AUTO UNLOCK TASKS
+// ==========================================
+
+// Run every 10 minutes to unlock tasks after 12 hours
+cron.schedule('*/10 * * * *', async () => {
+  try {
+    const { PrismaClient } = require('@prisma/client');
+    const prisma = new PrismaClient();
+
+    const now = new Date();
+    const twelveHoursAgo = new Date(now.getTime() - 12 * 60 * 60 * 1000);
+
+    const submissions = await prisma.submission.findMany({
+      where: {
+        submissionDate: { lt: twelveHoursAgo },
+        nextTaskUnlocked: false
+      },
+      include: {
+        task: true,
+        enrollment: true
+      }
+    });
+
+    for (const submission of submissions) {
+      await prisma.submission.update({
+        where: { id: submission.id },
+        data: { nextTaskUnlocked: true }
+      });
+
+      await prisma.notification.create({
+        data: {
+          userId: submission.enrollment.userId,
+          title: '🔓 Next Task Unlocked',
+          message: `Task ${submission.task.taskNumber + 1} is now available!`,
+          type: 'INFO'
+        }
+      });
+    }
+
+    console.log(`✅ Auto-unlocked ${submissions.length} tasks`);
+    await prisma.$disconnect();
+
+  } catch (error) {
+    console.error('❌ Cron job error:', error.message);
+  }
+});
+
+// ==========================================
+// ERROR HANDLING
+// ==========================================
+
+// 404 handler
 app.use('/api/*', (req, res) => {
   res.status(404).json({
     success: false,
-    message: `API endpoint ${req.originalUrl} not found`
+    message: `API endpoint ${req.originalUrl} not found`,
+    hint: 'Check /api/docs for available endpoints'
   });
 });
 
-// Global error handling middleware
+// Global error handler
 app.use((error, req, res, next) => {
   console.error('Global error handler:', error);
   
   if (error.code === 'LIMIT_FILE_SIZE') {
     return res.status(400).json({
       success: false,
-      message: 'File size too large'
+      message: 'File size too large (max 100MB)'
+    });
+  }
+
+  if (error.name === 'JsonWebTokenError') {
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid token'
+    });
+  }
+
+  if (error.name === 'TokenExpiredError') {
+    return res.status(401).json({
+      success: false,
+      message: 'Token expired'
     });
   }
 
@@ -188,7 +361,10 @@ app.use((error, req, res, next) => {
   });
 });
 
-// Graceful shutdown
+// ==========================================
+// GRACEFUL SHUTDOWN
+// ==========================================
+
 const gracefulShutdown = (signal) => {
   console.log(`\n${signal} received. Starting graceful shutdown...`);
   
@@ -203,17 +379,35 @@ const gracefulShutdown = (signal) => {
   }, 10000);
 };
 
-// Start server
+// ==========================================
+// START SERVER
+// ==========================================
+
 const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () => {
-  console.log('\n🚀 LMS Server Started Successfully!');
-  console.log(`📡 Server running on: http://localhost:${PORT}`);
-  console.log(`📚 API Documentation: http://localhost:${PORT}/api/docs`);
-  console.log(`🔍 Health Check: http://localhost:${PORT}/api/health`);
-  console.log('\n🔑 Default Admin Credentials:');
-  console.log('   User ID: ADMIN001');
-  console.log('   Password: admin123');
-  console.log('\n✨ Ready to handle requests!\n');
+  console.log('\n' + '='.repeat(80));
+  console.log('🚀 UNIFIED STUDENT LMS SERVER STARTED SUCCESSFULLY!');
+  console.log('='.repeat(80));
+  console.log(`\n📡 Server: http://localhost:${PORT}`);
+  console.log(`📚 API Docs: http://localhost:${PORT}/api/docs`);
+  console.log(`🏥 Health: http://localhost:${PORT}/api/health`);
+  console.log(`🔧 Init DB: POST http://localhost:${PORT}/api/init-db`);
+  
+  console.log('\n📦 MODULES LOADED:');
+  console.log('   ✅ User Management');
+  console.log('   ✅ Task & Submission System');
+  console.log('   ✅ Payment Processing');
+  console.log('   ✅ Certificate Management');
+  console.log('   ✅ Chat System');
+  
+  console.log('\n🔑 Default Credentials:');
+  console.log('   Admin: ADMIN001 / admin123');
+  console.log('   Intern: INT2025001 / int2025001');
+  
+  console.log('\n⏰ Cron Jobs:');
+  console.log('   🔓 Auto-unlock tasks: Every 10 minutes');
+  
+  console.log('\n' + '='.repeat(80) + '\n');
 });
 
 // Handle shutdown signals
@@ -222,12 +416,12 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
+  console.error('❌ Uncaught Exception:', error);
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
   process.exit(1);
 });
 

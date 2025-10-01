@@ -1,29 +1,30 @@
-// src/routes/auth.js
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const { PrismaClient } = require('@prisma/client');
+const { prisma } = require('../config/database');
+const JWTUtil = require('../utils/jwt');
 const { authenticateToken } = require('../middleware/auth');
 
-const prisma = new PrismaClient();
-
-// Login endpoint
+// Login (supports both userId and email)
 router.post('/login', async (req, res) => {
   try {
-    const { userId, password } = req.body;
+    const { userIdOrEmail, password } = req.body;
 
-    // Validate input
-    if (!userId || !password) {
+    if (!userIdOrEmail || !password) {
       return res.status(400).json({
         success: false,
-        message: 'User ID and password are required'
+        message: 'User ID/Email and password are required'
       });
     }
 
-    // Find user by userId
-    const user = await prisma.user.findUnique({
-      where: { userId: userId.toUpperCase() }
+    // Find user by userId or email
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { userId: userIdOrEmail },
+          { email: userIdOrEmail }
+        ]
+      }
     });
 
     if (!user) {
@@ -33,7 +34,7 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Check if account is active
+    // Check if user is active
     if (!user.isActive) {
       return res.status(403).json({
         success: false,
@@ -43,7 +44,6 @@ router.post('/login', async (req, res) => {
 
     // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
-
     if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
@@ -52,34 +52,17 @@ router.post('/login', async (req, res) => {
     }
 
     // Generate JWT token
-    const token = jwt.sign(
-      { 
-        userId: user.id,
-        role: user.role,
-        email: user.email
-      },
-      process.env.JWT_SECRET || 'your-secret-key-change-in-production',
-      { expiresIn: '7d' }
-    );
+    const token = JWTUtil.generateToken(user);
 
-    // Update last login (optional)
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { updatedAt: new Date() }
-    });
+    // Remove password from response
+    const { passwordHash, ...userWithoutPassword } = user;
 
     res.json({
       success: true,
       message: 'Login successful',
       data: {
-        token,
-        user: {
-          id: user.id,
-          userId: user.userId,
-          name: user.name,
-          email: user.email,
-          role: user.role
-        }
+        user: userWithoutPassword,
+        token
       }
     });
 
@@ -93,7 +76,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Get current user info
+// Get Current User Profile
 router.get('/me', authenticateToken, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
@@ -103,18 +86,15 @@ router.get('/me', authenticateToken, async (req, res) => {
         userId: true,
         name: true,
         email: true,
+        phone: true,
         role: true,
         isActive: true,
         createdAt: true,
-        enrollments: {
-          include: {
-            internship: {
-              select: {
-                id: true,
-                title: true,
-                coverImage: true
-              }
-            }
+        _count: {
+          select: {
+            enrollments: true,
+            submissions: true,
+            notifications: true
           }
         }
       }
@@ -126,32 +106,24 @@ router.get('/me', authenticateToken, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Get user error:', error);
+    console.error('Get profile error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch user data',
+      message: 'Failed to fetch profile',
       error: error.message
     });
   }
 });
 
-// Change password
+// Change Password
 router.post('/change-password', authenticateToken, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
 
-    // Validate input
     if (!currentPassword || !newPassword) {
       return res.status(400).json({
         success: false,
         message: 'Current password and new password are required'
-      });
-    }
-
-    if (newPassword.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: 'New password must be at least 6 characters long'
       });
     }
 
@@ -162,7 +134,6 @@ router.post('/change-password', authenticateToken, async (req, res) => {
 
     // Verify current password
     const isPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
-
     if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
@@ -194,43 +165,24 @@ router.post('/change-password', authenticateToken, async (req, res) => {
   }
 });
 
-// Refresh token
-router.post('/refresh-token', authenticateToken, async (req, res) => {
-  try {
-    // Generate new token
-    const token = jwt.sign(
-      { 
-        userId: req.user.id,
-        role: req.user.role,
-        email: req.user.email
-      },
-      process.env.JWT_SECRET || 'your-secret-key-change-in-production',
-      { expiresIn: '7d' }
-    );
-
-    res.json({
-      success: true,
-      message: 'Token refreshed successfully',
-      data: { token }
-    });
-
-  } catch (error) {
-    console.error('Refresh token error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to refresh token',
-      error: error.message
-    });
-  }
-});
-
-// Logout (client-side should remove token)
+// Logout (client-side token removal, optional server-side logging)
 router.post('/logout', authenticateToken, async (req, res) => {
   try {
+    // Optional: Log logout event
+    await prisma.auditLog.create({
+      data: {
+        action: 'USER_LOGOUT',
+        userId: req.user.id,
+        details: `User ${req.user.userId} logged out`,
+        ipAddress: req.ip
+      }
+    });
+
     res.json({
       success: true,
-      message: 'Logged out successfully'
+      message: 'Logout successful'
     });
+
   } catch (error) {
     console.error('Logout error:', error);
     res.status(500).json({

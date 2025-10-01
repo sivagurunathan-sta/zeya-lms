@@ -1,11 +1,11 @@
-// backend/config/database.js
 const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient({
-  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+  log: process.env.NODE_ENV === 'development' 
+    ? ['query', 'error', 'warn'] 
+    : ['error'],
 });
 
-// Test database connection
 async function connectDB() {
   try {
     await prisma.$connect();
@@ -16,14 +16,9 @@ async function connectDB() {
   }
 }
 
-// Graceful shutdown
 async function disconnectDB() {
   await prisma.$disconnect();
   console.log('Database disconnected');
 }
 
-module.exports = {
-  prisma,
-  connectDB,
-  disconnectDB
-};
+module.exports = { prisma, connectDB, disconnectDB };
