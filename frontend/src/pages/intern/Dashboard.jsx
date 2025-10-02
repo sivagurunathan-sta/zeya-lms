@@ -1,8 +1,16 @@
 import React from 'react';
-import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const InternDashboard = () => {
-  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const user = JSON.parse(localStorage.getItem('user') || localStorage.getItem('userData') || 'null');
+  const logout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('user');
+    localStorage.removeItem('userData');
+    navigate('/login');
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
