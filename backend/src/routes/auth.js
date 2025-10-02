@@ -3,15 +3,67 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
 const { body, validationResult } = require('express-validator');
+const fs = require('fs');
+const path = require('path');
 
 const router = express.Router();
-const prisma = new PrismaClient();
+let prisma;
+let usePrisma = !!process.env.DATABASE_URL;
+if (usePrisma) {
+  try {
+    prisma = new PrismaClient();
+  } catch (e) {
+    console.warn('Prisma init failed, falling back to file storage', e.message);
+    usePrisma = false;
+  }
+}
+
+const dataDir = path.join(__dirname, '../../data');
+const usersFile = path.join(dataDir, 'users.json');
+if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+if (!fs.existsSync(usersFile)) fs.writeFileSync(usersFile, JSON.stringify([]));
+
+const readUsers = () => {
+  try { return JSON.parse(fs.readFileSync(usersFile, 'utf-8') || '[]'); } catch { return []; }
+};
+const writeUsers = (users) => fs.writeFileSync(usersFile, JSON.stringify(users, null, 2));
+
+const ensureDefaultLocalUsers = async () => {
+  const users = readUsers();
+  if (!users.find(u => u.userId === 'ADMIN001')) {
+    users.push({
+      id: 'local-admin-1',
+      userId: 'ADMIN001',
+      name: 'System Administrator',
+      email: 'admin@lms.com',
+      passwordHash: await bcrypt.hash('admin123', 10),
+      role: 'ADMIN',
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+  }
+  if (!users.find(u => u.userId === 'INT2025001')) {
+    users.push({
+      id: 'local-int-1',
+      userId: 'INT2025001',
+      name: 'Intern 1',
+      email: 'intern1@lms.com',
+      passwordHash: await bcrypt.hash('int2025001', 10),
+      role: 'INTERN',
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+  }
+  writeUsers(users);
+};
 
 // Generate JWT Token
 const generateToken = (userId, role) => {
   return jwt.sign(
     { userId, role },
-    process.env.JWT_SECRET,
+    process.env.JWT_SECRET || 'dev-secret',
     { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
   );
 };
