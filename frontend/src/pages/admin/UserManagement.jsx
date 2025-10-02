@@ -211,6 +211,17 @@ const AdminUserManagement = () => {
     setUsers(sampleUsers);
   }, []);
 
+  useEffect(() => {
+    if (selectedUser) {
+      setEditData({
+        name: selectedUser.name,
+        email: selectedUser.email,
+        phone: selectedUser.phone,
+        location: selectedUser.location
+      });
+    }
+  }, [selectedUser]);
+
   // Filter users
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
