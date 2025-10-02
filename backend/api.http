@@ -1,0 +1,487 @@
+###############################################
+# UNIFIED STUDENT LMS API TESTING
+# Use with REST Client (VS Code Extension) or Postman
+###############################################
+
+@baseUrl = http://localhost:5000
+@adminToken = YOUR_ADMIN_TOKEN_HERE
+@internToken = YOUR_INTERN_TOKEN_HERE
+
+###############################################
+# 1. HEALTH & INITIALIZATION
+###############################################
+
+### Health Check
+GET {{baseUrl}}/api/health
+
+### API Documentation
+GET {{baseUrl}}/api/docs
+
+### Initialize Database (Run ONCE)
+POST {{baseUrl}}/api/init-db
+Content-Type: application/json
+
+###############################################
+# 2. AUTHENTICATION
+###############################################
+
+### Admin Login
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "userIdOrEmail": "ADMIN001",
+  "password": "admin123"
+}
+
+### Intern Login
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "userIdOrEmail": "INT2025001",
+  "password": "int2025001"
+}
+
+### Get Current User Profile
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer {{adminToken}}
+
+### Change Password
+POST {{baseUrl}}/api/auth/change-password
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "admin123",
+  "newPassword": "newpassword123"
+}
+
+### Logout
+POST {{baseUrl}}/api/auth/logout
+Authorization: Bearer {{adminToken}}
+
+###############################################
+# 3. ADMIN - USER MANAGEMENT
+###############################################
+
+### Get All Users (with filters)
+GET {{baseUrl}}/api/admin/users?page=1&limit=20&status=active&search=intern
+Authorization: Bearer {{adminToken}}
+
+### Get Single User Profile
+GET {{baseUrl}}/api/admin/users/USER_ID_HERE
+Authorization: Bearer {{adminToken}}
+
+### Bulk Add Users
+POST {{baseUrl}}/api/admin/users/bulk-add
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "userIds": [
+    "INT2025011",
+    "INT2025012",
+    "INT2025013"
+  ]
+}
+
+### Update User
+PUT {{baseUrl}}/api/admin/users/USER_ID_HERE
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Updated Name",
+  "email": "updated@lms.com",
+  "phone": "+91 9876543210"
+}
+
+### Revoke User Access
+POST {{baseUrl}}/api/admin/users/USER_ID_HERE/revoke
+Authorization: Bearer {{adminToken}}
+
+### Restore User Access
+POST {{baseUrl}}/api/admin/users/USER_ID_HERE/restore
+Authorization: Bearer {{adminToken}}
+
+###############################################
+# 4. ADMIN - TASKS & SUBMISSIONS
+###############################################
+
+### Create Complete Internship with 35 Tasks
+POST {{baseUrl}}/api/admin/tasks/create-course
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "title": "Full Stack Development Internship",
+  "description": "Complete 35-day web development bootcamp",
+  "durationDays": 35,
+  "certificatePrice": 499,
+  "tasks": [
+    {
+      "taskNumber": 1,
+      "title": "Setup Development Environment",
+      "description": "Install Node.js, VS Code, and Git",
+      "points": 10,
+      "submissionType": "GITHUB"
+    }
+  ]
+}
+
+### Get All Courses
+GET {{baseUrl}}/api/admin/tasks/courses
+Authorization: Bearer {{adminToken}}
+
+### Get All Submissions
+GET {{baseUrl}}/api/admin/tasks/submissions?status=PENDING&page=1&limit=20
+Authorization: Bearer {{adminToken}}
+
+### Get Pending Submissions for Review
+GET {{baseUrl}}/api/admin/tasks/submissions/pending
+Authorization: Bearer {{adminToken}}
+
+### Review Submission (Approve/Reject)
+PUT {{baseUrl}}/api/admin/tasks/submissions/SUBMISSION_ID_HERE/review
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "status": "APPROVED",
+  "score": 10,
+  "adminFeedback": "Excellent work! Well structured code."
+}
+
+### Update Course
+PUT {{baseUrl}}/api/admin/tasks/courses/COURSE_ID_HERE
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "title": "Updated Course Title",
+  "description": "Updated description",
+  "isActive": true
+}
+
+###############################################
+# 5. ADMIN - PAYMENTS
+###############################################
+
+### Get All Payments
+GET {{baseUrl}}/api/admin/payments?status=PENDING&type=CERTIFICATE&page=1&limit=20
+Authorization: Bearer {{adminToken}}
+
+### Get Pending Payment Verifications
+GET {{baseUrl}}/api/admin/payments/pending
+Authorization: Bearer {{adminToken}}
+
+### Verify Payment
+POST {{baseUrl}}/api/admin/payments/PAYMENT_ID_HERE/verify
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "transactionId": "TXN123456789",
+  "notes": "Payment verified successfully"
+}
+
+### Reject Payment
+POST {{baseUrl}}/api/admin/payments/PAYMENT_ID_HERE/reject
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "rejectionReason": "Invalid transaction ID or screenshot unclear"
+}
+
+###############################################
+# 6. ADMIN - CERTIFICATES
+###############################################
+
+### Get Certificate Purchase Requests
+GET {{baseUrl}}/api/admin/certificates/requests
+Authorization: Bearer {{adminToken}}
+
+### Upload Certificate to Intern
+POST {{baseUrl}}/api/admin/certificates/upload
+Authorization: Bearer {{adminToken}}
+Content-Type: multipart/form-data
+
+# Form data:
+# enrollmentId: ENROLLMENT_ID_HERE
+# certificate: [FILE]
+
+### Get All Issued Certificates
+GET {{baseUrl}}/api/admin/certificates/issued
+Authorization: Bearer {{adminToken}}
+
+### Validate Certificate for Paid Tasks Access
+POST {{baseUrl}}/api/admin/certificates/USER_ID_HERE/validate
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "approved": true,
+  "notes": "Certificate verified, enabling paid tasks access"
+}
+
+### Get Certificate Statistics
+GET {{baseUrl}}/api/admin/certificates/statistics
+Authorization: Bearer {{adminToken}}
+
+###############################################
+# 7. ADMIN - CHAT SYSTEM
+###############################################
+
+### Get All Chat Rooms
+GET {{baseUrl}}/api/admin/chat/rooms
+Authorization: Bearer {{adminToken}}
+
+### Create Chat Room with User
+POST {{baseUrl}}/api/admin/chat/create/USER_ID_HERE
+Authorization: Bearer {{adminToken}}
+
+### Get Chat Messages
+GET {{baseUrl}}/api/admin/chat/ROOM_ID_HERE/messages
+Authorization: Bearer {{adminToken}}
+
+### Send Message
+POST {{baseUrl}}/api/admin/chat/ROOM_ID_HERE/send
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "message": "Hello! How can I help you today?",
+  "fileUrl": null
+}
+
+### Assign Private Task
+POST {{baseUrl}}/api/admin/chat/ROOM_ID_HERE/assign-task
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "userId": "USER_ID_HERE",
+  "title": "Build E-commerce Website",
+  "description": "Create a full-stack e-commerce platform with payment integration",
+  "dueDate": "2025-12-31T23:59:59Z"
+}
+
+### Get User's Private Tasks
+GET {{baseUrl}}/api/admin/chat/private-tasks/USER_ID_HERE
+Authorization: Bearer {{adminToken}}
+
+###############################################
+# 8. ADMIN - DASHBOARD & ANALYTICS
+###############################################
+
+### Get Dashboard Statistics
+GET {{baseUrl}}/api/admin/dashboard/stats
+Authorization: Bearer {{adminToken}}
+
+### Get Analytics Report
+GET {{baseUrl}}/api/admin/dashboard/analytics?startDate=2025-01-01&endDate=2025-12-31
+Authorization: Bearer {{adminToken}}
+
+###############################################
+# 9. INTERN - PROFILE & ENROLLMENT
+###############################################
+
+### Get Intern Dashboard
+GET {{baseUrl}}/api/intern/profile/dashboard
+Authorization: Bearer {{internToken}}
+
+### Enroll in Course
+POST {{baseUrl}}/api/intern/profile/enroll/COURSE_ID_HERE
+Authorization: Bearer {{internToken}}
+
+### Get My Enrollments
+GET {{baseUrl}}/api/intern/profile/enrollments
+Authorization: Bearer {{internToken}}
+
+### Get Notifications
+GET {{baseUrl}}/api/intern/profile/notifications?page=1&limit=10
+Authorization: Bearer {{internToken}}
+
+### Mark Notification as Read
+PUT {{baseUrl}}/api/intern/profile/notifications/NOTIFICATION_ID_HERE/read
+Authorization: Bearer {{internToken}}
+
+###############################################
+# 10. INTERN - TASKS & SUBMISSIONS
+###############################################
+
+### Get My Tasks for Enrollment
+GET {{baseUrl}}/api/intern/tasks/ENROLLMENT_ID_HERE
+Authorization: Bearer {{internToken}}
+
+### Submit Task (GitHub)
+POST {{baseUrl}}/api/intern/tasks/TASK_ID_HERE/submit
+Authorization: Bearer {{internToken}}
+Content-Type: application/json
+
+{
+  "submissionType": "GITHUB",
+  "githubUrl": "https://github.com/username/repo-name"
+}
+
+### Submit Task (Form)
+POST {{baseUrl}}/api/intern/tasks/TASK_ID_HERE/submit
+Authorization: Bearer {{internToken}}
+Content-Type: application/json
+
+{
+  "submissionType": "FORM",
+  "formData": "Answer to the assignment questions..."
+}
+
+### Submit Task (File Upload)
+POST {{baseUrl}}/api/intern/tasks/TASK_ID_HERE/submit
+Authorization: Bearer {{internToken}}
+Content-Type: multipart/form-data
+
+# Form data:
+# submissionType: FILE
+# file: [FILE]
+
+### Get Submission Details
+GET {{baseUrl}}/api/intern/tasks/submission/SUBMISSION_ID_HERE
+Authorization: Bearer {{internToken}}
+
+### Get Progress for Enrollment
+GET {{baseUrl}}/api/intern/tasks/progress/ENROLLMENT_ID_HERE
+Authorization: Bearer {{internToken}}
+
+###############################################
+# 11. INTERN - PAYMENTS
+###############################################
+
+### Initiate Certificate Payment
+POST {{baseUrl}}/api/intern/payments/initiate-certificate
+Authorization: Bearer {{internToken}}
+Content-Type: application/json
+
+{
+  "enrollmentId": "ENROLLMENT_ID_HERE"
+}
+
+### Upload Payment Proof
+POST {{baseUrl}}/api/intern/payments/PAYMENT_ID_HERE/upload-proof
+Authorization: Bearer {{internToken}}
+Content-Type: multipart/form-data
+
+# Form data:
+# paymentProof: [IMAGE FILE]
+# transactionId: "TXN123456789"
+
+### Get Payment History
+GET {{baseUrl}}/api/intern/payments/history
+Authorization: Bearer {{internToken}}
+
+### Initiate Paid Task Payment
+POST {{baseUrl}}/api/intern/payments/initiate-paid-task
+Authorization: Bearer {{internToken}}
+Content-Type: application/json
+
+{
+  "paidTaskId": "PAID_TASK_ID_HERE"
+}
+
+###############################################
+# 12. INTERN - CERTIFICATES
+###############################################
+
+### Check Certificate Eligibility
+GET {{baseUrl}}/api/intern/certificates/status?enrollmentId=ENROLLMENT_ID_HERE
+Authorization: Bearer {{internToken}}
+
+### Download Certificate
+GET {{baseUrl}}/api/intern/certificates/download/ENROLLMENT_ID_HERE
+Authorization: Bearer {{internToken}}
+
+### Submit Certificate for Validation (Paid Tasks Access)
+POST {{baseUrl}}/api/intern/certificates/submit-validation
+Authorization: Bearer {{internToken}}
+Content-Type: multipart/form-data
+
+# Form data:
+# enrollmentId: ENROLLMENT_ID_HERE
+# certificate: [FILE]
+
+### Get Validation Status
+GET {{baseUrl}}/api/intern/certificates/validation-status
+Authorization: Bearer {{internToken}}
+
+###############################################
+# 13. INTERN - CHAT
+###############################################
+
+### Get My Chat Room
+GET {{baseUrl}}/api/intern/chat/room
+Authorization: Bearer {{internToken}}
+
+### Get Chat Messages
+GET {{baseUrl}}/api/intern/chat/messages?page=1&limit=50
+Authorization: Bearer {{internToken}}
+
+### Send Message
+POST {{baseUrl}}/api/intern/chat/send
+Authorization: Bearer {{internToken}}
+Content-Type: application/json
+
+{
+  "message": "Hello, I have a question about Task 5"
+}
+
+### Get My Private Tasks
+GET {{baseUrl}}/api/intern/chat/private-tasks
+Authorization: Bearer {{internToken}}
+
+### Submit Private Task
+POST {{baseUrl}}/api/intern/chat/private-tasks/TASK_ID_HERE/submit
+Authorization: Bearer {{internToken}}
+Content-Type: application/json
+
+{
+  "submissionUrl": "https://github.com/username/private-task-repo"
+}
+
+###############################################
+# 14. PUBLIC ENDPOINTS
+###############################################
+
+### Verify Certificate (Public)
+GET {{baseUrl}}/api/public/verify-certificate/CERTIFICATE_NUMBER_HERE
+
+### Get Active Courses (Public)
+GET {{baseUrl}}/api/public/courses
+
+###############################################
+# TESTING WORKFLOW
+###############################################
+
+# 1. Initialize Database: POST /api/init-db
+# 2. Login as Admin: POST /api/auth/login (ADMIN001/admin123)
+# 3. Copy token from response
+# 4. Create Course: POST /api/admin/tasks/create-course
+# 5. Bulk Add Users: POST /api/admin/users/bulk-add
+# 6. Login as Intern: POST /api/auth/login (INT2025001/int2025001)
+# 7. Copy intern token
+# 8. Enroll in Course: POST /api/intern/profile/enroll/{courseId}
+# 9. Submit Tasks: POST /api/intern/tasks/{taskId}/submit
+# 10. Admin Reviews: PUT /api/admin/tasks/submissions/{id}/review
+# 11. Intern Initiates Payment: POST /api/intern/payments/initiate-certificate
+# 12. Admin Verifies Payment: POST /api/admin/payments/{id}/verify
+# 13. Admin Uploads Certificate: POST /api/admin/certificates/upload
+# 14. Intern Downloads: GET /api/intern/certificates/download/{enrollmentId}
+
+###############################################
+# NOTES
+###############################################
+
+# - Replace {{adminToken}} and {{internToken}} with actual JWT tokens
+# - Replace placeholder IDs (USER_ID_HERE, TASK_ID_HERE, etc.) with real IDs
+# - For file uploads, use multipart/form-data with actual files
+# - All timestamps should be in ISO 8601 format
+# - Default pagination: page=1, limit=20
