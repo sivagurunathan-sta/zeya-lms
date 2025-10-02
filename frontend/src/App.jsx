@@ -19,6 +19,7 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/admin/bulk-create" element={<ProtectedRoute><BulkCreate /></ProtectedRoute>} />
         <Route path="/intern/dashboard" element={<ProtectedRoute><InternDashboard /></ProtectedRoute>} />
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
