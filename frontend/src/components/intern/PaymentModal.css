@@ -1,0 +1,235 @@
+.payment-modal {
+  max-width: 600px !important;
+}
+
+.congratulations-section {
+  text-align: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 30px;
+  border-radius: 12px;
+  margin-bottom: 25px;
+}
+
+.congrats-icon {
+  font-size: 64px;
+  margin-bottom: 15px;
+}
+
+.congratulations-section h3 {
+  margin: 0 0 10px 0;
+  font-size: 28px;
+}
+
+.congratulations-section p {
+  margin: 0 0 20px 0;
+  opacity: 0.9;
+}
+
+.final-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.final-stats .stat {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 15px;
+  border-radius: 10px;
+  backdrop-filter: blur(10px);
+}
+
+.final-stats .stat strong {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 5px;
+  opacity: 0.9;
+}
+
+.final-stats .stat span {
+  display: block;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.score-value {
+  color: #4CAF50;
+  font-size: 28px !important;
+}
+
+.payment-info {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 25px;
+}
+
+.payment-info h4 {
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 18px;
+}
+
+.amount-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 15px 20px;
+  border-radius: 8px;
+  border-left: 4px solid #4CAF50;
+}
+
+.amount-display span {
+  color: #666;
+  font-size: 16px;
+}
+
+.amount-display strong {
+  color: #4CAF50;
+  font-size: 28px;
+}
+
+.qr-section {
+  background: #fff;
+  border: 2px dashed #e0e0e0;
+  padding: 25px;
+  border-radius: 12px;
+  margin-bottom: 25px;
+  text-align: center;
+}
+
+.qr-section h4 {
+  margin: 0 0 20px 0;
+  color: #333;
+}
+
+.qr-placeholder {
+  margin-bottom: 20px;
+}
+
+.qr-code {
+  width: 200px;
+  height: 200px;
+  margin: 0 auto 15px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 64px;
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+}
+
+.qr-code p {
+  margin: 10px 0 5px 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.qr-code small {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.upi-details {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+}
+
+.upi-details p {
+  margin: 8px 0;
+  color: #333;
+  font-size: 14px;
+}
+
+.payment-form {
+  margin-top: 25px;
+}
+
+.file-selected {
+  display: block;
+  margin-top: 8px;
+  color: #4CAF50;
+  font-weight: 600;
+}
+
+.payment-note {
+  background: #fff3cd;
+  border-left: 4px solid #ffc107;
+  padding: 15px;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.payment-note p {
+  margin: 0;
+  color: #856404;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.btn-submit-payment {
+  background: linear-gradient(135deg, #4CAF50, #45a049) !important;
+  flex: 2 !important;
+}
+
+.btn-submit-payment:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+}
+
+.ineligible-message {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.ineligible-message .icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+}
+
+.ineligible-message p {
+  font-size: 16px;
+  color: #666;
+  margin-bottom: 25px;
+  line-height: 1.6;
+}
+
+.progress-info,
+.score-info {
+  background: #f8f9fa;
+  padding: 12px 20px;
+  border-radius: 8px;
+  margin: 10px 0;
+  text-align: left;
+}
+
+.progress-info strong,
+.score-info strong {
+  color: #333;
+  margin-right: 10px;
+}
+
+.btn-understand {
+  width: 100%;
+  padding: 14px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-top: 20px;
+}
+
+.btn-understand:hover {
+  background: #5568d3;
+  transform: translateY(-2px);
+}
