@@ -249,7 +249,7 @@ const AdminUserManagement = () => {
 
   // Handle revoke user
   const handleRevokeUser = (userId) => {
-    if (confirm('Are you sure you want to revoke access for this user?')) {
+    if (window.confirm('Are you sure you want to revoke access for this user?')) {
       setUsers(users.map(u => u.id === userId ? { ...u, status: 'revoked', isActive: false } : u));
       alert('User access revoked successfully!');
     }
