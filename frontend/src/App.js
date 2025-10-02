@@ -18,6 +18,7 @@ import AdminCertificateDashboard from './components/Admin/CertificateDashboard';
 import ManageCourses from './components/Admin/ManageCourses';
 import CreateCourse from './components/Admin/CreateCourse';
 import ViewInterns from './components/Admin/ViewInterns';
+import NotFound from './pages/NotFound';
 
 // Intern/Student Pages
 import InternDashboard from './components/intern/InternDashboard';
