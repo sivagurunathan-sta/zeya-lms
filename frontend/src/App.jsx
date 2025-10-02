@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './components/Login';
 import AdminDashboard from './pages/admin/Dashboard';
+import BulkCreate from './pages/admin/BulkCreate';
 import InternDashboard from './pages/intern/Dashboard';
 
 const ProtectedRoute = ({ children }) => {
