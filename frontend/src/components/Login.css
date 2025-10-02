@@ -1,4 +1,4 @@
-.login-container {
+body, .login-container {
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -169,6 +169,45 @@
   background: #f9f9f9;
   border-radius: 8px;
   border-left: 4px solid #4CAF50;
+}
+
+/* New classes - error box and default credentials */
+.error-box {
+  padding: 12px;
+  margin-bottom: 20px;
+  background: #fee;
+  border: 1px solid #fcc;
+  border-radius: 8px;
+  color: #c33;
+}
+
+.default-creds {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  margin-top: 12px;
+}
+
+.cred-btn {
+  padding: 8px;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.cred-admin {
+  background: #667eea;
+}
+
+.cred-intern {
+  background: #4CAF50;
+}
+
+.default-creds-title {
+  margin-bottom: 10px;
+  font-weight: 600;
 }
 
 /* Responsive */
