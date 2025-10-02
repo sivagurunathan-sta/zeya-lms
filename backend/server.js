@@ -35,6 +35,7 @@ uploadsDirectories.forEach(dir => {
 });
 
 // Security & Middleware
+app.set('trust proxy', true); // Allow reading X-Forwarded-For when behind proxies
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
