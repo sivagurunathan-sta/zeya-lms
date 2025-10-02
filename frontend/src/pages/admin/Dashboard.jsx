@@ -123,7 +123,7 @@ const AdminDashboard = () => {
 
           {/* Quick Actions */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            <button className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow border-2 border-transparent hover:border-blue-500">
+            <button onClick={() => window.location.href = '/admin/bulk-create'} className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow border-2 border-transparent hover:border-blue-500">
               <div className="flex items-center">
                 <div className="bg-blue-100 p-3 rounded-lg">
                   <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
