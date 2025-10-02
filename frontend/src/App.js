@@ -281,12 +281,29 @@ const AnalyticsPage = () => (
   </div>
 );
 
-const UnauthorizedPage = () => (
-  <div style={placeholderStyles.container}>
-    <h1 style={placeholderStyles.title}>🚫 Unauthorized</h1>
-    <p style={placeholderStyles.subtitle}>You don't have permission to access this page.</p>
-  </div>
-);
+const UnauthorizedPage = () => {
+  const navigate = useNavigate();
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('user') || localStorage.getItem('userData');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const role = (parsed?.role || parsed?.userRole || '').toString().toUpperCase();
+        if (role === 'INTERN') return navigate('/intern/dashboard');
+        if (role === 'ADMIN') return navigate('/admin/users');
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [navigate]);
+
+  return (
+    <div style={placeholderStyles.container}>
+      <h1 style={placeholderStyles.title}>🚫 Unauthorized</h1>
+      <p style={placeholderStyles.subtitle}>You don't have permission to access this page.</p>
+    </div>
+  );
+};
 
 const NotFoundPage = () => (
   <div style={placeholderStyles.container}>
