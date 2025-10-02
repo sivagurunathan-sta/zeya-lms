@@ -61,6 +61,35 @@ router.get('/users', async (req, res) => {
     const { search, status, page = 1, limit = 20 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
+    if (!prisma) {
+      // file fallback
+      const allUsers = readUsers().filter(u => u.role === 'INTERN');
+      let filtered = allUsers;
+      if (status && status !== 'all') filtered = filtered.filter(u => u.isActive === (status === 'active'));
+      if (search) {
+        const q = search.toLowerCase();
+        filtered = filtered.filter(u => (u.name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q) || (u.userId || '').toLowerCase().includes(q));
+      }
+      const total = filtered.length;
+      const usersPage = filtered.slice(skip, skip + parseInt(limit));
+
+      const enriched = usersPage.map(u => ({
+        id: u.id,
+        userId: u.userId,
+        name: u.name,
+        email: u.email,
+        isActive: u.isActive,
+        createdAt: u.createdAt,
+        updatedAt: u.updatedAt,
+        enrollments: [],
+        payments: [],
+        chatPermission: null,
+        _count: { enrollments: 0, submissions: 0, payments: 0, notifications: 0 }
+      }));
+
+      return res.json({ success: true, data: { users: enriched, pagination: { total, page: parseInt(page), limit: parseInt(limit), totalPages: Math.ceil(total / parseInt(limit)) } } });
+    }
+
     const where = {
       role: 'INTERN',
       ...(status && status !== 'all' && {
