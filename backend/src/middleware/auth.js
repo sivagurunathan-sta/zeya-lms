@@ -1,5 +1,21 @@
 const jwt = require('jsonwebtoken');
-const { prisma } = require('../config/database');
+let prismaClient;
+try {
+  prismaClient = require('../config/database').prisma;
+} catch (e) {
+  prismaClient = null;
+}
+
+const fs = require('fs');
+const path = require('path');
+const dataDir = path.join(__dirname, '../../data');
+const usersFile = path.join(dataDir, 'users.json');
+if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+if (!fs.existsSync(usersFile)) fs.writeFileSync(usersFile, JSON.stringify([]));
+
+const readUsers = () => {
+  try { return JSON.parse(fs.readFileSync(usersFile, 'utf-8') || '[]'); } catch { return []; }
+};
 
 const authenticateToken = async (req, res, next) => {
   try {
@@ -7,47 +23,31 @@ const authenticateToken = async (req, res, next) => {
     const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
-      return res.status(401).json({
-        success: false,
-        message: 'Access token required'
-      });
+      return res.status(401).json({ success: false, message: 'Access token required' });
     }
 
-    // Verify token with correct field name (fallback to dev-secret if JWT_SECRET not set)
     const secret = process.env.JWT_SECRET || 'dev-secret';
     const decoded = jwt.verify(token, secret);
-
-    // Backend auth.js uses generateToken(user) which creates token with user object
-    // So decoded will have the full user object, not just id
     const userId = decoded.id || decoded.userId || decoded.user || decoded.sub;
-    
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        userId: true,
-        name: true,
-        email: true,
-        role: true,
-        isActive: true
-      }
-    });
 
-    if (!user || !user.isActive) {
-      return res.status(403).json({
-        success: false,
-        message: 'User not found or inactive'
-      });
+    if (prismaClient && process.env.DATABASE_URL) {
+      const user = await prismaClient.user.findUnique({ where: { id: userId }, select: { id: true, userId: true, name: true, email: true, role: true, isActive: true } });
+      if (!user || !user.isActive) return res.status(403).json({ success: false, message: 'User not found or inactive' });
+      req.user = user;
+      return next();
     }
 
-    req.user = user;
+    // Fallback: file-based users
+    const users = readUsers();
+    const user = users.find(u => u.id === userId || u.userId === userId || u.email === userId);
+    if (!user) return res.status(403).json({ success: false, message: 'User not found or inactive' });
+    if (!user.isActive) return res.status(403).json({ success: false, message: 'User not found or inactive' });
+
+    req.user = { id: user.id, userId: user.userId, name: user.name, email: user.email, role: user.role, isActive: user.isActive };
     next();
   } catch (error) {
     console.error('Auth middleware error:', error);
-    return res.status(403).json({
-      success: false,
-      message: 'Invalid or expired token'
-    });
+    return res.status(403).json({ success: false, message: 'Invalid or expired token' });
   }
 };
 
