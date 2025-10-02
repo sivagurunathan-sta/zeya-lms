@@ -378,6 +378,16 @@ const App = () => {
         {/* Unauthorized Route */}
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
+        {/* Intern Route */}
+        <Route
+          path="/intern/dashboard"
+          element={
+            <ProtectedRoute user={user} requiredRole="INTERN">
+              <InternDashboard />
+            </ProtectedRoute>
+          }
+        />
+
         {/* Default Redirect */}
         <Route
           path="/"
