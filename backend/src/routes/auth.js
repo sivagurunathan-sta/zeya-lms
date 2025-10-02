@@ -107,7 +107,7 @@ router.post('/register', [
       // Create welcome notification
       await prisma.notification.create({ data: { userId: user.id, title: 'Welcome to Student LMS!', message: 'Your account has been created successfully. Start your learning journey today!', type: 'SUCCESS' } });
 
-      return res.status(201).json({ success: true, message: 'Registration successful! Please login.', userId: user.userId });
+      return res.status(201).json({ success: true, message: 'Registration successful! Please login.', data: { userId: user.userId } });
     }
 
     // Fallback: File-based storage
