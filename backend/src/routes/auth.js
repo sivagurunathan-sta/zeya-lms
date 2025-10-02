@@ -92,7 +92,7 @@ router.post('/register', [
 
 // Login Route
 router.post('/login', [
-  body('email').isEmail().withMessage('Valid email is required'),
+  body('email').trim().notEmpty().withMessage('Email or User ID is required'),
   body('password').notEmpty().withMessage('Password is required'),
 ], async (req, res) => {
   try {
