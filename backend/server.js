@@ -82,22 +82,22 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/auth', require('./src/routes/auth'));
 
 // Admin Routes - Modularized
-app.use('/api/admin/users', require('./src/routes/admin/users'));
-app.use('/api/admin/tasks', require('./src/routes/admin/tasks'));
-app.use('/api/admin/payments', require('./src/routes/admin/payments'));
-app.use('/api/admin/certificates', require('./src/routes/admin/certificates'));
-app.use('/api/admin/chat', require('./src/routes/admin/chat'));
-app.use('/api/admin/dashboard', require('./src/routes/admin/dashboard'));
+app.use('/api/admin', require('./src/routes/admin-users'));
+app.use('/api', require('./src/routes/tasks'));
+app.use('/api/admin/payments', require('./src/routes/admin-payment-verification'));
+// app.use('/api/admin/certificates', require('./src/routes/admin/certificates'));
+app.use('/api/admin', require('./src/routes/admin-chat'));
+app.use('/api/admin', require('./src/routes/admin-enhanced'));
 
 // Intern Routes - Modularized
-app.use('/api/intern/profile', require('./src/routes/intern/profile'));
-app.use('/api/intern/tasks', require('./src/routes/intern/tasks'));
-app.use('/api/intern/payments', require('./src/routes/intern/payments'));
-app.use('/api/intern/certificates', require('./src/routes/intern/certificates'));
-app.use('/api/intern/chat', require('./src/routes/intern/chat'));
+app.use('/api/payments', require('./src/routes/payments'));
+app.use('/api/intern/payments', require('./src/routes/intern-payment'));
+// app.use('/api/intern/payments', require('./src/routes/intern/payments'));
+// app.use('/api/intern/certificates', require('./src/routes/intern/certificates'));
+// app.use('/api/intern/chat', require('./src/routes/intern/chat'));
 
 // Public Routes
-app.use('/api/public', require('./src/routes/public'));
+// app.use('/api/public', require('./src/routes/public'));
 
 // ==========================================
 // HEALTH CHECK & DOCUMENTATION
