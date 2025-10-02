@@ -5,11 +5,13 @@ const InternDashboard = () => {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') || localStorage.getItem('userData') || 'null');
   const logout = () => {
+    // Clear all auth-related storage and force full reload to reset app state
     localStorage.removeItem('token');
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
     localStorage.removeItem('userData');
-    navigate('/login');
+    localStorage.removeItem('auth');
+    window.location.href = '/login';
   };
 
   return (
