@@ -378,9 +378,9 @@ const App = () => {
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
         {/* Default Redirect */}
-        <Route 
-          path="/" 
-          element={<Navigate to={user ? "/admin/users" : "/login"} replace />} 
+        <Route
+          path="/"
+          element={<Navigate to={user ? (user.role === 'ADMIN' ? '/admin/users' : '/intern/dashboard') : '/login'} replace />}
         />
 
         {/* 404 Not Found */}
