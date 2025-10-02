@@ -284,17 +284,38 @@ const AnalyticsPage = () => (
 const UnauthorizedPage = () => {
   const navigate = useNavigate();
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('user') || localStorage.getItem('userData');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        const role = (parsed?.role || parsed?.userRole || '').toString().toUpperCase();
-        if (role === 'INTERN') return navigate('/intern/dashboard');
-        if (role === 'ADMIN') return navigate('/admin/users');
+    const checkAndRedirect = async () => {
+      try {
+        const stored = localStorage.getItem('user') || localStorage.getItem('userData');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          const role = (parsed?.role || parsed?.userRole || '').toString().toUpperCase();
+          if (role === 'INTERN') return navigate('/intern/dashboard');
+          if (role === 'ADMIN') return navigate('/admin/users');
+        }
+
+        // If token exists but no user, try fetching profile
+        const token = localStorage.getItem('authToken') || localStorage.getItem('token');
+        if (token) {
+          try {
+            const { data } = await authAPI.getProfile();
+            const profile = data?.data?.user || data?.user || data;
+            if (profile) {
+              localStorage.setItem('user', JSON.stringify(profile));
+              const role = (profile?.role || '').toString().toUpperCase();
+              if (role === 'INTERN') return navigate('/intern/dashboard');
+              if (role === 'ADMIN') return navigate('/admin/users');
+            }
+          } catch (err) {
+            // ignore
+          }
+        }
+      } catch (e) {
+        // ignore
       }
-    } catch (e) {
-      // ignore
-    }
+    };
+
+    checkAndRedirect();
   }, [navigate]);
 
   return (
