@@ -372,9 +372,15 @@ const App = () => {
   };
 
   const handleLogout = () => {
+    // Clear all possible auth tokens and user stores used across the app
     localStorage.removeItem('token');
+    localStorage.removeItem('authToken');
     localStorage.removeItem('user');
+    localStorage.removeItem('userData');
+    localStorage.removeItem('auth');
     setUser(null);
+    // force full reload to reset app state
+    window.location.href = '/login';
   };
 
   // Show loading spinner while checking auth
