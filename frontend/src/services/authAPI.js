@@ -2,21 +2,27 @@ import api from './api';
 
 import api from './api';
 
-export const login = (credentials) => {
-  // Transform credentials to use 'email' field expected by backend (also supports userId)
+export const login = async (credentials) => {
   const payload = {
     email: credentials.userId || credentials.userIdOrEmail || credentials.email,
     password: credentials.password
   };
 
-  return api.post('/auth/login', payload)
-    .then((res) => {
-      // Return object shaped so authSlice expects response.data
-      return { data: res.data };
-    })
-    .catch((error) => {
-      throw error;
-    });
+  const res = await api.post('/auth/login', payload);
+  // Backend returns { success, data: { user, token } }
+  const token = res.data?.data?.token;
+  const user = res.data?.data?.user;
+
+  if (token) {
+    localStorage.setItem('authToken', token);
+    localStorage.setItem('token', token);
+  }
+  if (user) {
+    localStorage.setItem('userData', JSON.stringify(user));
+    localStorage.setItem('user', JSON.stringify(user));
+  }
+
+  return { token, user, data: res.data };
 };
 
 export const register = (userData) => {
