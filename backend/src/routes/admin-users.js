@@ -311,6 +311,89 @@ router.get('/users/:userId', async (req, res) => {
 });
 
 // ==================== BULK ADD USERS ====================
+
+// ==================== BULK GENERATE USERS (auto-generate IDs + passwords) ====================
+router.post('/users/bulk-generate', async (req, res) => {
+  try {
+    const { count = 10, prefix = 'INT', role = 'INTERN', passwordLength = 8 } = req.body;
+
+    const created = [];
+    const errors = [];
+
+    const generatePassword = (len) => {
+      const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()';
+      let pass = '';
+      for (let i = 0; i < len; i++) {
+        pass += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return pass;
+    };
+
+    const padNumber = (num, size) => {
+      let s = String(num);
+      while (s.length < size) s = '0' + s;
+      return s;
+    };
+
+    let attempts = 0;
+    let createdCount = 0;
+    // We will generate sequential numeric suffixes to avoid infinite loops
+    let sequence = 1;
+
+    while (createdCount < count && attempts < count * 10) {
+      attempts++;
+      const candidateId = `${prefix}${padNumber(sequence, 6)}`;
+      sequence++;
+
+      // Ensure uniqueness
+      const exists = await prisma.user.findUnique({ where: { userId: candidateId } });
+      if (exists) continue;
+
+      const plainPassword = generatePassword(passwordLength);
+      const hashedPassword = await bcrypt.hash(plainPassword, 10);
+
+      try {
+        const user = await prisma.user.create({
+          data: {
+            userId: candidateId,
+            name: `User ${candidateId}`,
+            email: `${candidateId.toLowerCase()}@lms.com`,
+            role: role || 'INTERN',
+            passwordHash: hashedPassword,
+            isActive: true
+          }
+        });
+
+        // Create welcome notification
+        await prisma.notification.create({
+          data: {
+            userId: user.id,
+            title: 'Welcome to LMS!',
+            message: `Your account has been created. Use User ID: ${candidateId} and password: ${plainPassword} to login.`,
+            type: 'INFO'
+          }
+        });
+
+        created.push({ userId: candidateId, email: `${candidateId.toLowerCase()}@lms.com`, name: `User ${candidateId}`, password: plainPassword });
+        createdCount++;
+
+      } catch (err) {
+        errors.push({ userId: candidateId, error: err.message });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Created ${created.length} users`,
+      data: created,
+      errors
+    });
+
+  } catch (error) {
+    console.error('Bulk generate users error:', error);
+    res.status(500).json({ success: false, message: 'Failed to generate users', error: error.message });
+  }
+});
 router.post('/users/bulk-add', async (req, res) => {
   try {
     const { userIds } = req.body;
