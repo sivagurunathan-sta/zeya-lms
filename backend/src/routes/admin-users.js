@@ -746,6 +746,19 @@ router.post('/users/:userId/verify-certificate', upload.single('certificate'), a
 // ==================== GET USER DASHBOARD STATS ====================
 router.get('/dashboard/stats', async (req, res) => {
   try {
+    if (!prisma) {
+      const users = readUsers().filter(u => u.role === 'INTERN');
+      const totalUsers = users.length;
+      const activeUsers = users.filter(u => u.isActive).length;
+      const revokedUsers = users.filter(u => !u.isActive).length;
+      const chatEnabledUsers = 0;
+      const totalEnrollments = 0;
+      const completedCourses = 0;
+      const totalRevenue = 0;
+
+      return res.json({ success: true, data: { totalUsers, activeUsers, revokedUsers, chatEnabledUsers, totalEnrollments, completedCourses, totalRevenue } });
+    }
+
     const [
       totalUsers,
       activeUsers,
