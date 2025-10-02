@@ -176,7 +176,7 @@ router.post('/login', [
       try { await prisma.auditLog.create({ data: { userId: user.id, action: 'LOGIN', details: `User ${user.email} logged in successfully`, ipAddress: req.ip } }); } catch(e){}
 
       const { passwordHash, ...userWithoutPassword } = user;
-      return res.json({ success: true, message: 'Login successful', token, user: userWithoutPassword });
+      return res.json({ success: true, message: 'Login successful', data: { user: userWithoutPassword, token } });
     }
 
     // Fallback: file-based lookup
