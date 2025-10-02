@@ -899,7 +899,7 @@ async function checkInternshipCompletion(enrollmentId) {
 /**
  * Bulk review submissions
  */
-router.post('/admin/submissions/bulk-review', adminOnly, async (req, res) => {
+router.post('/admin/submissions/bulk-review', authorizeAdmin, async (req, res) => {
   try {
     const { submissionIds, action, score, adminFeedback } = req.body;
 
@@ -965,7 +965,7 @@ router.post('/admin/submissions/bulk-review', adminOnly, async (req, res) => {
 /**
  * Get submission statistics for dashboard
  */
-router.get('/admin/submission-stats', adminOnly, async (req, res) => {
+router.get('/admin/submission-stats', authorizeAdmin, async (req, res) => {
   try {
     const [
       totalSubmissions,
