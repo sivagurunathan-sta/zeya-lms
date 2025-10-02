@@ -7,7 +7,23 @@ const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const path = require('path');
 
-const prisma = new PrismaClient();
+let prisma;
+try {
+  prisma = require('../config/database').prisma;
+} catch (e) {
+  prisma = null;
+}
+
+const fs = require('fs');
+const path = require('path');
+const dataDir = path.join(__dirname, '../../data');
+const usersFile = path.join(dataDir, 'users.json');
+if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+if (!fs.existsSync(usersFile)) fs.writeFileSync(usersFile, JSON.stringify([]));
+
+const readUsers = () => {
+  try { return JSON.parse(fs.readFileSync(usersFile, 'utf-8') || '[]'); } catch { return []; }
+};
 
 // Apply authentication and authorization middleware
 router.use(authenticateToken);
