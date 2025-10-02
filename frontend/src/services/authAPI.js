@@ -1,15 +1,17 @@
 import api from './api';
 
+import api from './api';
+
 export const login = (credentials) => {
-  // Transform credentials to match backend expectations
+  // Transform credentials to use 'email' field expected by backend (also supports userId)
   const payload = {
-    userIdOrEmail: credentials.userId || credentials.userIdOrEmail,
+    email: credentials.userId || credentials.userIdOrEmail || credentials.email,
     password: credentials.password
   };
-  
+
   return api.post('/auth/login', payload)
     .then((res) => {
-      // Backend returns { success, message, data: { user, token } }
+      // Return object shaped so authSlice expects response.data
       return { data: res.data };
     })
     .catch((error) => {
