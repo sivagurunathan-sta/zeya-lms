@@ -581,13 +581,6 @@ const AdminUserManagement = () => {
   const EditUserModal = () => {
     if (!showEditModal || !selectedUser) return null;
 
-    const [editData, setEditData] = useState({
-      name: selectedUser.name,
-      email: selectedUser.email,
-      phone: selectedUser.phone,
-      location: selectedUser.location
-    });
-
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-lg w-full max-w-md">
