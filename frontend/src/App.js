@@ -6,26 +6,26 @@ import toast from 'react-hot-toast';
 import './App.css';
 
 // Auth Pages
-import Login from './pages/Login';
+import Login from './pages/auth/Login';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminUserManagement from './pages/admin/UserManagement';
-import AdminTaskManagement from './pages/admin/TaskManagement';
-import AdminSubmissionReview from './pages/admin/ReviewSubmissions';
-import AdminPaymentVerification from './pages/admin/PaymentVerificationDashboard';
-import AdminCertificateDashboard from './pages/admin/CertificateDashboard';
-import ManageCourses from './pages/admin/ManageCourses';
-import CreateCourse from './pages/admin/CreateCourse';
-import ViewInterns from './pages/admin/ViewInterns';
+import AdminTaskManagement from './components/Admin/ManageCourses';
+import AdminSubmissionReview from './components/Admin/ReviewSubmissions';
+import AdminPaymentVerification from './components/Admin/PaymentVerificationDashboard';
+import AdminCertificateDashboard from './components/Admin/CertificateDashboard';
+import ManageCourses from './components/Admin/ManageCourses';
+import CreateCourse from './components/Admin/CreateCourse';
+import ViewInterns from './components/Admin/ViewInterns';
 
 // Intern/Student Pages
-import InternDashboard from './pages/intern/Dashboard';
+import InternDashboard from './components/intern/InternDashboard';
 import StudentDashboard from './pages/student/Dashboard';
-import CourseView from './pages/intern/CourseView';
+import CourseView from './components/intern/CourseView';
 import TaskView from './pages/student/TaskView';
-import PaymentSubmission from './pages/intern/PaymentSubmission';
-import InternCertificateDashboard from './pages/intern/CertificateDashboard';
+import PaymentSubmission from './components/intern/PaymentSubmission';
+import InternCertificateDashboard from './components/intern/CertificateDashboard';
 
 // ============================================
 // PROTECTED ROUTE COMPONENT
@@ -71,28 +71,7 @@ const InternRoute = ({ children }) => (
   </ProtectedRoute>
 );
 
-// ============================================
-// 404 NOT FOUND COMPONENT
-// ============================================
-const NotFound = () => {
-  return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="text-center fade-in">
-        <h1 className="text-6xl font-bold text-gray-900 mb-4">404</h1>
-        <p className="text-xl text-gray-600 mb-8">Page not found</p>
-        
-          href="/login"
-          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-block transition-all"
-        <a
-          href="/login"
-          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-block transition-all"
-        >
-          Go to Login
-        </a>
-      </div>
-    </div>
-  );
-};
+import NotFound from './pages/NotFound';
 
 // ============================================
 // MAIN APP COMPONENT
