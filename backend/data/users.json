@@ -1,1 +1,24 @@
-[]
+[
+  {
+    "id": "local-admin-1",
+    "userId": "ADMIN001",
+    "name": "System Administrator",
+    "email": "admin@lms.com",
+    "passwordHash": "$2a$10$pqyFLU2.3N6YjvQfmoQYg.GAvUISIBCI5xDzkNURVI8NrpA8D9l3u",
+    "role": "ADMIN",
+    "isActive": true,
+    "createdAt": "2025-10-02T13:43:38.680Z",
+    "updatedAt": "2025-10-02T13:43:38.680Z"
+  },
+  {
+    "id": "local-int-1",
+    "userId": "INT2025001",
+    "name": "Intern 1",
+    "email": "intern1@lms.com",
+    "passwordHash": "$2a$10$zZnNWDEa6AC.G.jFvxNfEuJrQKAjYnPlPQku4wggbzM6clYkd3Kui",
+    "role": "INTERN",
+    "isActive": true,
+    "createdAt": "2025-10-02T13:43:38.783Z",
+    "updatedAt": "2025-10-02T13:43:38.783Z"
+  }
+]
