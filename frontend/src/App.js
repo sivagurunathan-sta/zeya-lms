@@ -201,8 +201,12 @@ const ProtectedRoute = ({ children, user, requiredRole }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (requiredRole && user.role !== requiredRole) {
-    return <Navigate to="/unauthorized" replace />;
+  if (requiredRole) {
+    const userRole = (user.role || '').toString().toUpperCase();
+    const reqRole = (requiredRole || '').toString().toUpperCase();
+    if (userRole !== reqRole) {
+      return <Navigate to="/unauthorized" replace />;
+    }
   }
 
   return children;
