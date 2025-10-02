@@ -61,6 +61,8 @@ export const adminUserAPI = {
   
   // Bulk add users
   bulkAddUsers: (data) => api.post('/admin/users/bulk-add', data),
+  // Bulk generate users (count, prefix, role)
+  bulkGenerateUsers: (data) => api.post('/admin/users/bulk-generate', data),
   
   // Update user details
   updateUser: (userId, data) => api.put(`/admin/users/${userId}`, data),
