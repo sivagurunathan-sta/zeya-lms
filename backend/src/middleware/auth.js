@@ -13,12 +13,13 @@ const authenticateToken = async (req, res, next) => {
       });
     }
 
-    // Verify token with correct field name
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
+    // Verify token with correct field name (fallback to dev-secret if JWT_SECRET not set)
+    const secret = process.env.JWT_SECRET || 'dev-secret';
+    const decoded = jwt.verify(token, secret);
+
     // Backend auth.js uses generateToken(user) which creates token with user object
     // So decoded will have the full user object, not just id
-    const userId = decoded.id || decoded.userId;
+    const userId = decoded.id || decoded.userId || decoded.user || decoded.sub;
     
     const user = await prisma.user.findUnique({
       where: { id: userId },
