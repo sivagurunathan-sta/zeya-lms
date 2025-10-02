@@ -347,7 +347,11 @@ const App = () => {
         <Route
           path="/login"
           element={
-            user ? <Navigate to="/admin/users" replace /> : <LoginPage onLogin={handleLogin} />
+            user ? (
+              <Navigate to={user.role === 'ADMIN' ? '/admin/users' : '/intern/dashboard'} replace />
+            ) : (
+              <LoginPage onLogin={handleLogin} />
+            )
           }
         />
 
