@@ -325,17 +325,21 @@ const App = () => {
 
   // Check if user is already logged in on mount
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
+    const token = localStorage.getItem('authToken') || localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user') || localStorage.getItem('userData') || localStorage.getItem('user');
 
     if (token && storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
+        // normalize role
+        if (parsedUser && parsedUser.role) parsedUser.role = parsedUser.role.toString().toUpperCase();
         setUser(parsedUser);
       } catch (error) {
         console.error('Error parsing stored user:', error);
         localStorage.removeItem('token');
+        localStorage.removeItem('authToken');
         localStorage.removeItem('user');
+        localStorage.removeItem('userData');
       }
     }
 
