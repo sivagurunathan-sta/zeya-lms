@@ -191,7 +191,7 @@ router.post('/login', [
     const token = generateToken(user.id, user.role);
 
     const { passwordHash, ...userWithoutPassword } = user;
-    return res.json({ success: true, message: 'Login successful', token, user: userWithoutPassword });
+    return res.json({ success: true, message: 'Login successful', data: { user: userWithoutPassword, token } });
 
   } catch (error) {
     console.error('Login error:', error);
