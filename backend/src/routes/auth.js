@@ -78,67 +78,66 @@ router.post('/register', [
     // Validate input
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ 
-        success: false, 
-        message: errors.array()[0].msg 
+      return res.status(400).json({
+        success: false,
+        message: errors.array()[0].msg
       });
     }
 
     const { name, email, password, phone } = req.body;
 
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email }
-    });
+    if (usePrisma) {
+      // Check if user already exists
+      const existingUser = await prisma.user.findUnique({ where: { email } });
 
-    if (existingUser) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Email already registered' 
-      });
+      if (existingUser) {
+        return res.status(400).json({ success: false, message: 'Email already registered' });
+      }
+
+      // Generate unique userId
+      const userCount = await prisma.user.count({ where: { role: 'INTERN' } });
+      const userId = `INT${new Date().getFullYear()}${String(userCount + 1).padStart(3, '0')}`;
+
+      // Hash password
+      const passwordHash = await bcrypt.hash(password, 10);
+
+      // Create user
+      const user = await prisma.user.create({ data: { userId, name, email, passwordHash, phone: phone || null, role: 'INTERN' } });
+
+      // Create welcome notification
+      await prisma.notification.create({ data: { userId: user.id, title: 'Welcome to Student LMS!', message: 'Your account has been created successfully. Start your learning journey today!', type: 'SUCCESS' } });
+
+      return res.status(201).json({ success: true, message: 'Registration successful! Please login.', userId: user.userId });
     }
 
-    // Generate unique userId
-    const userCount = await prisma.user.count({ where: { role: 'INTERN' } });
-    const userId = `INT${new Date().getFullYear()}${String(userCount + 1).padStart(3, '0')}`;
+    // Fallback: File-based storage
+    const users = readUsers();
+    if (users.find(u => u.email === email)) {
+      return res.status(400).json({ success: false, message: 'Email already registered' });
+    }
 
-    // Hash password
+    const userId = `INT${new Date().getFullYear()}${String(users.length + 1).padStart(3, '0')}`;
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Create user
-    const user = await prisma.user.create({
-      data: {
-        userId,
-        name,
-        email,
-        passwordHash,
-        phone: phone || null,
-        role: 'INTERN'
-      }
-    });
+    const user = {
+      id: `local-${Date.now()}`,
+      userId,
+      name,
+      email,
+      passwordHash,
+      role: 'INTERN',
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    users.push(user);
+    writeUsers(users);
 
-    // Create welcome notification
-    await prisma.notification.create({
-      data: {
-        userId: user.id,
-        title: 'Welcome to Student LMS!',
-        message: 'Your account has been created successfully. Start your learning journey today!',
-        type: 'SUCCESS'
-      }
-    });
-
-    res.status(201).json({
-      success: true,
-      message: 'Registration successful! Please login.',
-      userId: user.userId
-    });
+    res.status(201).json({ success: true, message: 'Registration successful! Please login.', userId: user.userId });
 
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Registration failed. Please try again.' 
-    });
+    res.status(500).json({ success: false, message: 'Registration failed. Please try again.' });
   }
 });
 
