@@ -26,6 +26,12 @@ const AdminUserManagement = () => {
     deadline: '',
     files: []
   });
+  const [editData, setEditData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    location: ''
+  });
 
   // Sample user data - Replace with actual API calls
   useEffect(() => {
