@@ -236,7 +236,7 @@ router.get('/me', async (req, res) => {
 
     res.json({
       success: true,
-      user
+      data: { user }
     });
 
   } catch (error) {
