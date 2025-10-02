@@ -15,11 +15,14 @@ const Login = () => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    await attemptLogin(formData);
+  };
+
+  const attemptLogin = async (credentials) => {
     setLoading(true);
     setError('');
-
     try {
-      const response = await authAPI.login(formData);
+      const response = await authAPI.login(credentials);
 
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
@@ -29,11 +32,23 @@ const Login = () => {
       } else {
         navigate('/intern/dashboard');
       }
-    } catch (error) {
-      setError(error?.message || 'Login failed. Check your credentials.');
+    } catch (err) {
+      setError(err?.response?.data?.message || err?.message || 'Login failed. Check your credentials.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const loginAsAdmin = async () => {
+    const creds = { email: 'ADMIN001', password: 'admin123' };
+    setFormData({ email: creds.email, password: creds.password });
+    await attemptLogin(creds);
+  };
+
+  const loginAsIntern = async () => {
+    const creds = { email: 'INT2025001', password: 'int2025001' };
+    setFormData({ email: creds.email, password: creds.password });
+    await attemptLogin(creds);
   };
 
   return (
