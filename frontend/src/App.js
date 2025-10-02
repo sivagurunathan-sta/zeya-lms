@@ -72,7 +72,6 @@ const InternRoute = ({ children }) => (
   </ProtectedRoute>
 );
 
-import NotFound from './pages/NotFound';
 
 // ============================================
 // MAIN APP COMPONENT
