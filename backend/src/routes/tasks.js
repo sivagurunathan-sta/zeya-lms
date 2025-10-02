@@ -1,7 +1,7 @@
 // routes/tasks.js - ENHANCED TASK & SUBMISSION MANAGEMENT SYSTEM
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
-const { auth, adminOnly, internOnly } = require('../middleware/auth');
+const { authenticateToken, authorizeAdmin, authorizeIntern } = require('../middleware/auth');
 const { createAuditLog, generatePaymentQR } = require('../utils/helpers');
 const multer = require('multer');
 const path = require('path');
@@ -48,7 +48,7 @@ const uploadSubmission = multer({
  * Get all tasks for an internship with submission status
  * Shows task details, locked/unlocked status, and submission info
  */
-router.get('/internship/:internshipId/tasks', auth, async (req, res) => {
+router.get('/internship/:internshipId/tasks', authenticateToken, async (req, res) => {
   try {
     const { internshipId } = req.params;
     const userId = req.user.id;
@@ -205,7 +205,7 @@ router.get('/internship/:internshipId/tasks', auth, async (req, res) => {
  * 2. Google Forms URL
  * 3. File Upload
  */
-router.post('/tasks/:taskId/submit', auth, uploadSubmission.single('file'), async (req, res) => {
+router.post('/tasks/:taskId/submit', authenticateToken, uploadSubmission.single('file'), async (req, res) => {
   try {
     const { taskId } = req.params;
     const { 
@@ -493,7 +493,7 @@ router.post('/tasks/:taskId/submit', auth, uploadSubmission.single('file'), asyn
 /**
  * Get submission details
  */
-router.get('/submissions/:submissionId', auth, async (req, res) => {
+router.get('/submissions/:submissionId', authenticateToken, async (req, res) => {
   try {
     const { submissionId } = req.params;
     const userId = req.user.id;
@@ -566,7 +566,7 @@ router.get('/submissions/:submissionId', auth, async (req, res) => {
 /**
  * Get all submissions for review with filters
  */
-router.get('/admin/submissions', adminOnly, async (req, res) => {
+router.get('/admin/submissions', authorizeAdmin, async (req, res) => {
   try {
     const { 
       status, 
@@ -658,7 +658,7 @@ router.get('/admin/submissions', adminOnly, async (req, res) => {
  * OPEN = Task completed correctly
  * CLOSE = Task incorrect, may allow resubmission
  */
-router.put('/admin/submissions/:submissionId/review', adminOnly, async (req, res) => {
+router.put('/admin/submissions/:submissionId/review', authorizeAdmin, async (req, res) => {
   try {
     const { submissionId } = req.params;
     const { 
