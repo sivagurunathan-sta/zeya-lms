@@ -150,87 +150,52 @@ router.post('/login', [
     // Validate input
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ 
-        success: false, 
-        message: errors.array()[0].msg 
-      });
+      return res.status(400).json({ success: false, message: errors.array()[0].msg });
     }
+
+    await ensureDefaultLocalUsers();
 
     const { email: identifier, password } = req.body;
 
-    // Find user by email OR userId
-    const user = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { email: identifier },
-          { userId: identifier }
-        ]
-      },
-      select: {
-        id: true,
-        userId: true,
-        name: true,
-        email: true,
-        passwordHash: true,
-        role: true,
-        isActive: true
-      }
-    });
-
-    if (!user) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Invalid email or password' 
+    if (usePrisma) {
+      // Find user by email OR userId
+      const user = await prisma.user.findFirst({
+        where: { OR: [{ email: identifier }, { userId: identifier }] },
+        select: { id: true, userId: true, name: true, email: true, passwordHash: true, role: true, isActive: true }
       });
+
+      if (!user) return res.status(401).json({ success: false, message: 'Invalid email or password' });
+      if (!user.isActive) return res.status(403).json({ success: false, message: 'Your account has been deactivated. Please contact admin.' });
+
+      const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+      if (!isPasswordValid) return res.status(401).json({ success: false, message: 'Invalid email or password' });
+
+      const token = generateToken(user.id, user.role);
+
+      // Create audit log if possible
+      try { await prisma.auditLog.create({ data: { userId: user.id, action: 'LOGIN', details: `User ${user.email} logged in successfully`, ipAddress: req.ip } }); } catch(e){}
+
+      const { passwordHash, ...userWithoutPassword } = user;
+      return res.json({ success: true, message: 'Login successful', token, user: userWithoutPassword });
     }
 
-    // Check if user is active
-    if (!user.isActive) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Your account has been deactivated. Please contact admin.' 
-      });
-    }
+    // Fallback: file-based lookup
+    const users = readUsers();
+    const user = users.find(u => u.email === identifier || u.userId === identifier);
+    if (!user) return res.status(401).json({ success: false, message: 'Invalid email or password' });
+    if (!user.isActive) return res.status(403).json({ success: false, message: 'Your account has been deactivated. Please contact admin.' });
 
-    // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    if (!isPasswordValid) return res.status(401).json({ success: false, message: 'Invalid email or password' });
 
-    if (!isPasswordValid) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Invalid email or password' 
-      });
-    }
-
-    // Generate token
     const token = generateToken(user.id, user.role);
 
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        userId: user.id,
-        action: 'LOGIN',
-        details: `User ${user.email} logged in successfully`,
-        ipAddress: req.ip
-      }
-    });
-
-    // Return user data (without password)
     const { passwordHash, ...userWithoutPassword } = user;
-
-    res.json({
-      success: true,
-      message: 'Login successful',
-      token,
-      user: userWithoutPassword
-    });
+    return res.json({ success: true, message: 'Login successful', token, user: userWithoutPassword });
 
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Login failed. Please try again.' 
-    });
+    res.status(500).json({ success: false, message: 'Login failed. Please try again.' });
   }
 });
 
