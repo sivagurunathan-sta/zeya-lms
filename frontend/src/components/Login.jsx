@@ -95,11 +95,11 @@ const Login = () => {
         <div className="login-footer">
           <p className="default-creds-title">Default Credentials:</p>
           <div className="default-creds">
-            <button type="button" className="cred-btn cred-admin" onClick={() => setFormData({email:'admin@lms.com',password:'admin123'})}>
-              Admin: admin@lms.com / admin123
+            <button type="button" className="cred-btn cred-admin" onClick={loginAsAdmin}>
+              👨‍💼 Admin: ADMIN001 / admin123
             </button>
-            <button type="button" className="cred-btn cred-intern" onClick={() => setFormData({email:'intern1@lms.com',password:'int2025001'})}>
-              Intern: intern1@lms.com / int2025001
+            <button type="button" className="cred-btn cred-intern" onClick={loginAsIntern}>
+              👨‍🎓 Intern: INT2025001 / int2025001
             </button>
           </div>
         </div>
