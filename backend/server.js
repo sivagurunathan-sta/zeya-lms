@@ -43,12 +43,14 @@ app.use(rateLimit({
 }));
 app.use(compression());
 app.use(morgan('combined'));
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+const frontendUrl = process.env.FRONTEND_URL;
+const corsOptions = {
+  origin: frontendUrl || (process.env.NODE_ENV === 'production' ? 'http://localhost:3000' : '*'),
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-}));
+};
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
