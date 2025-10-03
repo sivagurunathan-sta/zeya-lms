@@ -202,8 +202,13 @@ app.post('/api/auth/login', async (req, res) => {
     const identifier = (userId || userIdOrEmail || email || '').toString().trim();
     if (!identifier || !password) return res.status(400).json({ message: 'userId/email and password are required' });
 
-    // Try admin first (Mongo)
-    let account = await Admin.findOne({ $or: [{ userId: identifier }, { email: identifier.toLowerCase() }] });
+    // Try admin first (Mongo), but don't fail if DB is down
+    let account = null;
+    try {
+      account = await Admin.findOne({ $or: [{ userId: identifier }, { email: identifier.toLowerCase() }] });
+    } catch (e) {
+      account = null;
+    }
     if (account) {
       if (!account.isActive) return res.status(403).json({ message: 'Account inactive' });
       const ok = await bcrypt.compare(password, account.password);
@@ -212,8 +217,12 @@ app.post('/api/auth/login', async (req, res) => {
       return res.json({ token, user: { id: account._id, name: account.name, userId: account.userId, email: account.email, role: 'admin' } });
     }
 
-    // Then try intern (Mongo)
-    account = await Intern.findOne({ $or: [{ userId: identifier }, { email: identifier.toLowerCase() }] });
+    // Then try intern (Mongo), but don't fail if DB is down
+    try {
+      account = await Intern.findOne({ $or: [{ userId: identifier }, { email: identifier.toLowerCase() }] });
+    } catch (e) {
+      account = null;
+    }
     if (account) {
       if (!account.isActive) return res.status(403).json({ message: 'Account inactive' });
       const ok = await bcrypt.compare(password, account.password);
