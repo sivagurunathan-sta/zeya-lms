@@ -195,13 +195,13 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage, limits: { fileSize: 100 * 1024 * 1024 } });
 
 // AUTH ROUTES
-// Unified login endpoint: tries admin then intern
+// Unified login endpoint: tries admin then intern; falls back to local data file
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { userId, password } = req.body;
     if (!userId || !password) return res.status(400).json({ message: 'userId and password are required' });
 
-    // Try admin first
+    // Try admin first (Mongo)
     let account = await Admin.findOne({ userId });
     if (account) {
       if (!account.isActive) return res.status(403).json({ message: 'Account inactive' });
@@ -211,14 +211,34 @@ app.post('/api/auth/login', async (req, res) => {
       return res.json({ token, user: { id: account._id, name: account.name, userId: account.userId, email: account.email, role: 'admin' } });
     }
 
-    // Then try intern
+    // Then try intern (Mongo)
     account = await Intern.findOne({ userId });
-    if (!account) return res.status(401).json({ message: 'Invalid credentials' });
-    if (!account.isActive) return res.status(403).json({ message: 'Account inactive' });
-    const ok = await bcrypt.compare(password, account.password);
-    if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
-    const token = jwt.sign({ userId: account._id, role: 'intern' }, JWT_SECRET, { expiresIn: '7d' });
-    return res.json({ token, user: { id: account._id, name: account.name, userId: account.userId, email: account.email, role: 'intern' } });
+    if (account) {
+      if (!account.isActive) return res.status(403).json({ message: 'Account inactive' });
+      const ok = await bcrypt.compare(password, account.password);
+      if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
+      const token = jwt.sign({ userId: account._id, role: 'intern' }, JWT_SECRET, { expiresIn: '7d' });
+      return res.json({ token, user: { id: account._id, name: account.name, userId: account.userId, email: account.email, role: 'intern' } });
+    }
+
+    // Fallback: check local users file for demo logins
+    try {
+      const usersPath = path.join(__dirname, 'data', 'users.json');
+      const raw = fs.readFileSync(usersPath, 'utf-8');
+      const localUsers = JSON.parse(raw);
+      const local = localUsers.find(u => u.userId === userId && u.isActive !== false);
+      if (local) {
+        const ok = await bcrypt.compare(password, local.passwordHash);
+        if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
+        const role = (local.role || '').toLowerCase() === 'admin' ? 'admin' : ((local.role || '').toLowerCase() === 'intern' ? 'intern' : (local.role || '').toLowerCase());
+        const token = jwt.sign({ userId: local.id, role: role || 'intern' }, JWT_SECRET, { expiresIn: '7d' });
+        return res.json({ token, user: { id: local.id, name: local.name, userId: local.userId, email: local.email, role: role?.toUpperCase?.() === 'ADMIN' ? 'admin' : role || 'intern' } });
+      }
+    } catch (e) {
+      // ignore file fallback errors
+    }
+
+    return res.status(401).json({ message: 'Invalid credentials' });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
