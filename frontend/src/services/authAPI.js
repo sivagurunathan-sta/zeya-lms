@@ -1,17 +1,14 @@
 import api from './api';
 
-import api from './api';
-
 export const login = async (credentials) => {
   const payload = {
-    email: credentials.userId || credentials.userIdOrEmail || credentials.email,
+    userId: credentials.userId || credentials.userIdOrEmail || credentials.email,
     password: credentials.password
   };
 
   const res = await api.post('/auth/login', payload);
-  // Backend returns { success, data: { user, token } }
-  const token = res.data?.data?.token;
-  const user = res.data?.data?.user;
+  const token = res.data?.token;
+  const user = res.data?.user;
 
   if (token) {
     localStorage.setItem('authToken', token);
