@@ -43,14 +43,38 @@ api.interceptors.response.use(
 // AUTHENTICATION APIs
 // ==========================================
 export const authAPI = {
-  login: (credentials) => {
-    const identifier = credentials.userId || credentials.userIdOrEmail || credentials.email;
+  login: async (credentials) => {
+    const identifier = (credentials.userId || credentials.userIdOrEmail || credentials.email || '').toString().trim();
     const payload = {
       userId: identifier,
       email: identifier,
       password: credentials.password
     };
-    return api.post('/auth/login', payload);
+
+    const response = await api.post('/auth/login', payload);
+    const body = response?.data ?? {};
+    const data = body?.data && (body.data.user || body.data.token) ? body.data : body;
+    const token = data?.token;
+    const user = data?.user;
+
+    if (!token || !user) {
+      const error = new Error(body?.message || 'Login failed. Please try again.');
+      error.status = response?.status;
+      error.code = 'INVALID_LOGIN_RESPONSE';
+      throw error;
+    }
+
+    const normalizedUser = {
+      ...user,
+      role: typeof user.role === 'string' ? user.role.toUpperCase() : user.role
+    };
+
+    return {
+      token,
+      user: normalizedUser,
+      message: body?.message || 'Login successful',
+      data: body
+    };
   },
   getProfile: () => api.get('/auth/me'),
   changePassword: (data) => api.post('/auth/change-password', data),
