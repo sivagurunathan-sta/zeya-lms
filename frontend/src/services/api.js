@@ -44,8 +44,10 @@ api.interceptors.response.use(
 // ==========================================
 export const authAPI = {
   login: (credentials) => {
+    const identifier = credentials.userId || credentials.userIdOrEmail || credentials.email;
     const payload = {
-      email: credentials.email || credentials.userIdOrEmail || credentials.userId || credentials.userIdOrEmail,
+      userId: identifier,
+      email: identifier,
       password: credentials.password
     };
     return api.post('/auth/login', payload);

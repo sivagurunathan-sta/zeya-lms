@@ -195,6 +195,68 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage, limits: { fileSize: 100 * 1024 * 1024 } });
 
 // AUTH ROUTES
+// Unified login endpoint: tries admin then intern; falls back to local data file
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { userId, email, userIdOrEmail, password } = req.body;
+    const identifier = (userId || userIdOrEmail || email || '').toString().trim();
+    if (!identifier || !password) return res.status(400).json({ message: 'userId/email and password are required' });
+
+    // Try admin first (Mongo), but don't fail if DB is down
+    let account = null;
+    try {
+      account = await Admin.findOne({ $or: [{ userId: identifier }, { email: identifier.toLowerCase() }] });
+    } catch (e) {
+      account = null;
+    }
+    if (account) {
+      if (!account.isActive) return res.status(403).json({ message: 'Account inactive' });
+      const ok = await bcrypt.compare(password, account.password);
+      if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
+      const token = jwt.sign({ userId: account._id, role: 'admin' }, JWT_SECRET, { expiresIn: '7d' });
+      return res.json({ token, user: { id: account._id, name: account.name, userId: account.userId, email: account.email, role: 'admin' } });
+    }
+
+    // Then try intern (Mongo), but don't fail if DB is down
+    try {
+      account = await Intern.findOne({ $or: [{ userId: identifier }, { email: identifier.toLowerCase() }] });
+    } catch (e) {
+      account = null;
+    }
+    if (account) {
+      if (!account.isActive) return res.status(403).json({ message: 'Account inactive' });
+      const ok = await bcrypt.compare(password, account.password);
+      if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
+      const token = jwt.sign({ userId: account._id, role: 'intern' }, JWT_SECRET, { expiresIn: '7d' });
+      return res.json({ token, user: { id: account._id, name: account.name, userId: account.userId, email: account.email, role: 'intern' } });
+    }
+
+    // Fallback: check local users file for demo logins
+    try {
+      const usersPath = path.join(__dirname, 'data', 'users.json');
+      const raw = fs.readFileSync(usersPath, 'utf-8');
+      const localUsers = JSON.parse(raw);
+      const idLower = identifier.toLowerCase();
+      const local = localUsers.find(u => (u.userId === identifier || (u.email || '').toLowerCase() === idLower) && u.isActive !== false);
+      if (local) {
+        const ok = await bcrypt.compare(password, local.passwordHash);
+        if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
+        const roleLower = (local.role || '').toLowerCase();
+        const role = roleLower === 'admin' ? 'admin' : (roleLower === 'intern' ? 'intern' : roleLower || 'intern');
+        const token = jwt.sign({ userId: local.id, role }, JWT_SECRET, { expiresIn: '7d' });
+        return res.json({ token, user: { id: local.id, name: local.name, userId: local.userId, email: local.email, role } });
+      }
+    } catch (e) {
+      // ignore file fallback errors
+    }
+
+    return res.status(401).json({ message: 'Invalid credentials' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Existing role-specific endpoints
 app.post('/api/auth/admin/login', async (req, res) => {
   try {
     const { userId, password } = req.body;

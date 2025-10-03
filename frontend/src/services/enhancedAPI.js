@@ -172,25 +172,38 @@ export const studentAPI = {
 // ==================== AUTHENTICATION SERVICES ====================
 
 export const authAPI = {
-  // Login
-  login: (credentials) => api.post('/auth/login', credentials),
-  adminLogin: (credentials) => api.post('/auth/admin-login', credentials),
-  internLogin: (credentials) => api.post('/auth/intern-login', credentials),
-  
+  // Login via unified endpoint
+  login: (credentials) => {
+    const payload = {
+      userId: credentials.userId || credentials.userIdOrEmail || credentials.email,
+      password: credentials.password
+    };
+    return api.post('/auth/login', payload);
+  },
+  // Role-specific (if ever needed)
+  adminLogin: (credentials) => {
+    const payload = { userId: credentials.userId, password: credentials.password };
+    return api.post('/auth/admin/login', payload);
+  },
+  internLogin: (credentials) => {
+    const payload = { userId: credentials.userId, password: credentials.password };
+    return api.post('/auth/intern/login', payload);
+  },
+
   // Registration
   register: (userData) => api.post('/auth/register', userData),
-  
+
   // Password Management
   forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
   resetPassword: (token, newPassword) => api.post('/auth/reset-password', { token, newPassword }),
-  changePassword: (currentPassword, newPassword) => 
+  changePassword: (currentPassword, newPassword) =>
     api.put('/auth/change-password', { currentPassword, newPassword }),
-  
+
   // Token Management
   refreshToken: () => api.post('/auth/refresh'),
   logout: () => api.post('/auth/logout'),
   validateToken: () => api.get('/auth/validate'),
-  
+
   // Profile
   getCurrentUser: () => api.get('/auth/me'),
   updateProfile: (profileData) => api.put('/auth/profile', profileData)
