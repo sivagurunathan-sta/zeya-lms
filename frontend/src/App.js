@@ -27,21 +27,19 @@ const LoginPage = ({ onLogin }) => {
     setLoading(true);
 
     try {
-      const response = await authAPI.login(credentials);
-      
-      if (response.data.success) {
-        const { user, token } = response.data.data;
-        
-        // Store auth data in localStorage
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(user));
-        
-        // Call parent callback to update state
-        onLogin(user);
-      }
+      const { token, user } = await authAPI.login(credentials);
+
+      localStorage.setItem('token', token);
+      localStorage.setItem('authToken', token);
+      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('userData', JSON.stringify(user));
+
+      onLogin(user);
     } catch (error) {
       console.error('Login error:', error);
-      setError(error.response?.data?.message || 'Login failed. Please check your credentials.');
+      const fallbackMessage =
+        error?.message || error?.response?.data?.message || 'Login failed. Please check your credentials.';
+      setError(fallbackMessage);
     } finally {
       setLoading(false);
     }
